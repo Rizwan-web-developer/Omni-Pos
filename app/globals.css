@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   THEME TOKENS
+
+   light (default) — Stitch "White & Orange": warm paper, white cards, ember
+   accent. dark — a genuinely neutral near-black theme, no blue cast.
+   Values stay as RGB triples so Tailwind's <alpha-value> keeps working.
+--------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  /* Structure */
+  --background: 248 250 252; /* #F8FAFC */
+  --surface: 255 255 255; /* #FFFFFF */
+  --surface-2: 244 246 249; /* quiet fill */
+  --surface-3: 236 239 244; /* raised / pressed fill */
+  --line: 226 232 240; /* #E2E8F0 */
+  --line-strong: 203 213 225; /* #CBD5E1 */
+
+  /* Type */
+  --foreground: 15 23 42; /* #0F172A */
+  --muted: 71 85 105; /* #475569 — 7:1 on white */
+
+  /* Ember accent */
+  --accent: 194 65 12; /* #C2410C — 4.9:1 with white */
+  --accent-hover: 154 52 18; /* #9A3412 */
+  --accent-fg: 255 255 255;
+  --accent-soft: 255 247 237; /* #FFF7ED */
+  --accent-line: 254 215 170; /* #FED7AA */
+  --brand: 234 88 12; /* #EA580C — decorative brand mark */
+  --ring: 234 88 12;
+
+  --overlay: 15 23 42;
+  --shadow-color: 15 23 42;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: 8 8 8; /* #080808 */
+  --surface: 17 17 17; /* #111111 */
+  --surface-2: 26 26 26; /* #1A1A1A */
+  --surface-3: 38 38 38; /* #262626 */
+  --line: 41 41 41; /* #292929 */
+  --line-strong: 64 64 64; /* #404040 */
+
+  --foreground: 245 245 245; /* #F5F5F5 */
+  --muted: 163 163 163; /* #A3A3A3 — 7.4:1 on #111111 */
+
+  --accent: 249 115 22; /* #F97316 */
+  --accent-hover: 251 146 60; /* #FB923C */
+  --accent-fg: 12 10 9; /* near-black text on orange */
+  --accent-soft: 43 26 15; /* #2B1A0F */
+  --accent-line: 88 45 20; /* #582D14 */
+  --brand: 249 115 22;
+  --ring: 249 115 22;
+
+  --overlay: 0 0 0;
+  --shadow-color: 0 0 0;
+}
+
+@layer base {
+  html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-size: 15px;
+    line-height: 1.55;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgb(var(--brand) / 0.24);
+    color: rgb(var(--foreground));
+  }
+
+  /*
+   * Fallback focus indicator for any element that does not have an explicit
+   * focus ring utility. Interactive components also use `.focus-ring`.
+   */
+  :focus-visible {
+    outline: 2px solid rgb(var(--ring));
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--line-strong));
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+
+  input[type="search"]::-webkit-search-cancel-button {
+    display: none;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface;
+  }
+
+  /*
+   * The keyboard ring used across rows, cards, inputs, buttons, palette
+   * options and POS tiles. It is deliberately high-contrast in both themes.
+   */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .focus-ring-inset {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring;
+  }
+
+  .skip-link {
+    @apply fixed left-4 top-4 z-[200] -translate-y-24 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-transform duration-150;
+  }
+
+  .skip-link:focus {
+    @apply translate-y-0;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
