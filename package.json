@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "OmniPos Hub — keyboard-first multi-tenant SaaS command center",
+  "engines": {
+    "node": ">=18.17.0 <23"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -18,6 +21,7 @@
     "@prisma/client": "^6.19.3",
     "lucide-react": "^0.454.0",
     "next": "14.2.35",
+    "prisma": "^6.19.3",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
@@ -29,7 +33,6 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.35",
     "postcss": "^8.4.49",
-    "prisma": "^6.19.3",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3"
   }
