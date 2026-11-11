@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     });
 
     const isAdmin = user.role === "SUPER_ADMIN" || user.role === "SUB_ADMIN";
-    const redirectTo = isAdmin ? "/" : user.tenantId ? `/store/${user.tenantId}` : "/login";
+    const redirectTo = isAdmin ? "/dashboard" : user.tenantId ? `/store/${user.tenantId}` : "/login";
     const res = NextResponse.json(
       { message: "Login successful", role: user.role, name: user.name, tenantId: user.tenantId, redirectTo },
       { status: 200 },

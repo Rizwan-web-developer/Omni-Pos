@@ -2,6 +2,7 @@ import {
   Activity,
   Building2,
   CreditCard,
+  KeyRound,
   LayoutDashboard,
   LifeBuoy,
   Settings2,
@@ -35,6 +36,14 @@ export const NAV_ITEMS: NavItem[] = [
     shortLabel: "Business",
     description: "Manage businesses and tenants",
     icon: Building2,
+    section: "Main",
+  },
+  {
+    href: "/access",
+    label: "Access",
+    shortLabel: "Access",
+    description: "Grant or remove features per business",
+    icon: KeyRound,
     section: "Main",
   },
   {

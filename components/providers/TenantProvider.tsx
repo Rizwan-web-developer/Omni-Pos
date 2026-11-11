@@ -50,6 +50,7 @@ export function mapBusinessToTenant(b: any): Tenant {
     accountType: ACCT[String(b.accountType)] || "real",
     trialEndsAt: b.trialEndsAt ?? null,
     status: STATUS[String(b.status)] || "active",
+    features: Array.isArray(b.features) ? b.features.map((value: unknown) => String(value)) : undefined,
     mrr: typeof b.mrr === "object" && b.mrr?.toNumber ? b.mrr.toNumber() : Number(b.mrr || 0),
     terminals: Number(b.terminals || 0),
     staff: Number(b.staff || 0),

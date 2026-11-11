@@ -6,6 +6,7 @@ import { normalizeEmail, requirePlatformAdmin, requireTenantAccess } from "@/lib
 import { fromAccountType, fromBusinessStatus, fromIndustryType, fromPlanTier, toBusinessStatus, toIndustryType, toPlanTier } from "@/lib/mappers";
 import { PLAN_BY_KEY } from "@/lib/data";
 import { computeValidUntil, PACKAGE_PKR } from "@/lib/subscription";
+import { getTenantFeatureKeys, setTenantFeatures } from "@/lib/tenant-features";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const access = await requireTenantAccess(params.id);
@@ -30,7 +31,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       include: { users: { select: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true }, orderBy: { createdAt: "asc" } } },
     });
   }
-  return NextResponse.json({ business });
+  const features = await getTenantFeatureKeys(business.id);
+  return NextResponse.json({ business: { ...business, features }, features });
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -43,6 +45,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!existing) return NextResponse.json({ message: "Business not found." }, { status: 404 });
 
     const data: Record<string, unknown> = {};
+    const featuresInput = Array.isArray(body.features)
+      ? (body.features as unknown[]).map((value) => String(value))
+      : null;
 
     if (typeof body.name === "string" && body.name.trim().length >= 2) data.businessName = body.name.trim();
     if (typeof body.slug === "string") {
@@ -101,9 +106,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
           update: { status: "PAID" as any, paidAt: now, validUntil, notes: "Auto-paid on Demo→Real conversion" },
         }),
       ]);
+      const features = featuresInput ? await setTenantFeatures(params.id, featuresInput) : await getTenantFeatureKeys(params.id);
 
       return NextResponse.json({
-        business,
+        business: { ...business, features },
+        features,
         mapped: {
           status: fromBusinessStatus(business.status),
           industry: fromIndustryType(business.industryType),
@@ -121,9 +128,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       data: data as any,
       include: { users: { select: { id: true, name: true, email: true, role: true, isActive: true } } },
     });
+    const features = featuresInput ? await setTenantFeatures(params.id, featuresInput) : await getTenantFeatureKeys(params.id);
 
     return NextResponse.json({
-      business,
+      business: { ...business, features },
+      features,
       mapped: {
         status: fromBusinessStatus(business.status),
         industry: fromIndustryType(business.industryType),

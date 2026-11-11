@@ -153,6 +153,8 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
   // Serial/IMEI selection when a SERIAL_OR_IMEI product is added to cart
   const [serialPick, setSerialPick] = useState<Product | null>(null);
   const [serialQuery, setSerialQuery] = useState("");
+  // IMEI/Serial feature granted by the platform admin (Access page).
+  const [serialEnabled, setSerialEnabled] = useState(false);
   // Internal dialogs (no native confirm/prompt)
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -180,6 +182,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
       const iData = await iRes.json().catch(() => ({}));
       setBusiness(bData.business ?? null);
       setProducts(Array.isArray(pData.products) ? pData.products : []);
+      setSerialEnabled(Boolean(pData?.features?.serialEnabled));
       setInvoices(Array.isArray(iData.invoices) ? iData.invoices : []);
     } catch {
       setError("Failed to load store data.");
@@ -224,8 +227,8 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
 
   const addToCart = (p: Product) => {
     if (p.stockQuantity <= 0) { flash("err", `"${p.name}" is out of stock.`); return; }
-    // SERIAL/IMEI tracked: require selecting a specific available serial tag
-    if (p.trackingType === "SERIAL_OR_IMEI") {
+    // SERIAL/IMEI tracked (and feature granted): require selecting a specific available serial tag
+    if (serialEnabled && p.trackingType === "SERIAL_OR_IMEI") {
       const available = (p.serialItems || []).filter((s) => !s.isSold);
       if (available.length === 0) { flash("err", `No available Serial/IMEI for "${p.name}". Add serials in Inventory.`); return; }
       setSerialQuery("");
@@ -424,7 +427,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
               ) : (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   {filteredProducts.map((p) => {
-                    const serialized = p.trackingType === "SERIAL_OR_IMEI";
+                    const serialized = serialEnabled && p.trackingType === "SERIAL_OR_IMEI";
                     const available = serialized ? (p.serialItems || []).filter((s) => !s.isSold).length : p.stockQuantity;
                     return (
                       <button key={p.id} type="button" onClick={() => addToCart(p)} disabled={available <= 0} className="focus-ring rounded-lg border border-line bg-surface-2 p-3 text-left transition-colors hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50">
@@ -534,7 +537,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><PackagePlus className="h-4 w-4 text-accent" /> Add product / stock</h2>
-                  <p className="mt-0.5 text-sm text-muted">Hybrid inventory: bulk quantity items or Serial/IMEI-tracked items (warranty/anti-theft).</p>
+                  <p className="mt-0.5 text-sm text-muted">{serialEnabled ? "Hybrid inventory: bulk quantity items or Serial/IMEI-tracked items (warranty/anti-theft)." : "Bulk quantity inventory. IMEI/Serial tracking can be enabled by the platform admin."}</p>
                 </div>
                 <button type="button" onClick={() => setAddOpen(true)} className="focus-ring inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg">
                   <Plus className="h-4 w-4" /> Add product
@@ -556,7 +559,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                     {products.length === 0 ? (
                       <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted">No products yet. Click &quot;Add product&quot; above.</td></tr>
                     ) : products.map((p) => {
-                      const serialized = p.trackingType === "SERIAL_OR_IMEI";
+                      const serialized = serialEnabled && p.trackingType === "SERIAL_OR_IMEI";
                       const soldOut = p.stockQuantity <= 0;
                       const inactive = p.isActive === false;
                       return (
@@ -771,6 +774,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
         open={addOpen}
         onClose={() => setAddOpen(false)}
         businessId={businessId}
+        serialEnabled={serialEnabled}
         onCreated={(p) => {
           setProducts((cur) => [p as Product, ...cur]);
           flash("ok", `Product added${p.trackingType === "SERIAL_OR_IMEI" ? ` (${p.stockQuantity} serials)` : ""}.`);

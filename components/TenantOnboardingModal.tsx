@@ -9,9 +9,11 @@ import {
   Check,
   CheckCircle2,
   Copy,
+  Info,
   KeyRound,
   Loader2,
   Rocket,
+  Sparkles,
   X,
 } from "lucide-react";
 
@@ -21,12 +23,14 @@ import { useOverlays } from "@/components/providers/OverlayProvider";
 import { useTenants } from "@/components/providers/TenantProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { INDUSTRIES, INDUSTRY_BY_KEY, PLAN_BY_KEY } from "@/lib/data";
+import { FEATURES, FEATURE_GROUPS, recommendedFeatures } from "@/lib/features";
 import type { AccountType, IndustryKey, PlanKey, Tenant, TenantDraft } from "@/lib/types";
 import { cn, isValidEmail, isValidPhone, slugify } from "@/lib/utils";
 
 const STEPS = [
   { label: "Business details", short: "01" },
   { label: "Category", short: "02" },
+  { label: "Feature access", short: "03" },
 ] as const;
 
 const EMPTY_DRAFT: TenantDraft = {
@@ -63,7 +67,14 @@ function fieldClass(hasError: boolean): string {
   );
 }
 
-const ALLOWED_INDUSTRIES = new Set<IndustryKey>(["mobile", "electronics", "cosmetics-shop"]);
+const ALLOWED_INDUSTRIES = new Set<IndustryKey>([
+  "mobile",
+  "electronics",
+  "cosmetics-shop",
+  "pharmacy",
+  "paint-shop",
+  "hardware-shop",
+]);
 
 export function TenantOnboardingModal() {
   const router = useRouter();
@@ -83,6 +94,8 @@ export function TenantOnboardingModal() {
   const [issuedCredentials, setIssuedCredentials] = useState<{ email: string; password: string; demo?: boolean; trialEndsAt?: string | null } | null>(null);
   const [deployError, setDeployError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selectedFeatures, setSelectedFeatures] = useState<Set<string>>(new Set());
+  const featureTouched = useRef(false);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const successRef = useRef<HTMLButtonElement>(null);
@@ -90,6 +103,28 @@ export function TenantOnboardingModal() {
 
   const patch = (next: Partial<TenantDraft>) => {
     setDraft((current) => ({ ...current, ...next }));
+  };
+
+  const chooseIndustry = (industry: IndustryKey) => {
+    setDraft((current) => ({ ...current, industry }));
+    if (!featureTouched.current) {
+      setSelectedFeatures(new Set(recommendedFeatures(industry)));
+    }
+  };
+
+  const toggleFeature = (key: string) => {
+    featureTouched.current = true;
+    setSelectedFeatures((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const applyRecommendedFeatures = () => {
+    featureTouched.current = true;
+    setSelectedFeatures(new Set(recommendedFeatures(draft.industry)));
   };
 
   useEffect(() => {
@@ -102,6 +137,7 @@ export function TenantOnboardingModal() {
     setIssuedCredentials(null);
     setDeployError("");
     finalizedRef.current = false;
+    featureTouched.current = false;
     setDraft(
       editing
         ? {
@@ -117,6 +153,13 @@ export function TenantOnboardingModal() {
             plan: editing.plan,
           }
         : EMPTY_DRAFT,
+    );
+    setSelectedFeatures(
+      new Set(
+        editing
+          ? editing.features ?? recommendedFeatures(editing.industry)
+          : recommendedFeatures(EMPTY_DRAFT.industry),
+      ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing?.id]);
@@ -150,6 +193,7 @@ export function TenantOnboardingModal() {
             location: draft.location,
             password: draft.password,
             accountType: draft.accountType,
+            features: Array.from(selectedFeatures),
           }),
         });
         const data = (await res.json().catch(() => ({}))) as { message?: string; business?: { id: string; uid?: string | null; businessName: string; slug?: string | null; industryType: string; subscriptionTier: string; status: string; accountType?: string; trialEndsAt?: string | null; ownerName?: string | null; email?: string | null; phone?: string | null; location?: string | null; createdAt: string }; credentials?: { email: string; password?: string; temporaryPassword?: string } };
@@ -230,6 +274,7 @@ export function TenantOnboardingModal() {
         location: draft.location.trim(),
         industry: draft.industry,
         plan: planKey,
+        features: Array.from(selectedFeatures),
       };
       // Persist to DB when possible; fall back to local update for demo entries.
       const res = await fetch(`/api/businesses/${editing.id}`, {
@@ -266,7 +311,7 @@ export function TenantOnboardingModal() {
 
   const primaryAction = () => {
     if (deploying || deployed || saving) return;
-    if (step < 1) {
+    if (step < STEPS.length - 1) {
       if (step === 0) {
         const nextErrors = validateDraft(draft, Boolean(editing));
         setErrors(nextErrors);
@@ -633,7 +678,7 @@ export function TenantOnboardingModal() {
                         type="button"
                         role="radio"
                         aria-checked={selected}
-                        onClick={() => patch({ industry: item.key as IndustryKey })}
+                        onClick={() => chooseIndustry(item.key as IndustryKey)}
                         className={cn(
                           "focus-ring relative rounded-xl border p-4 text-left transition-colors",
                           selected ? "border-accent-line bg-accent-soft" : "border-line bg-surface hover:border-line-strong hover:bg-surface-2",
@@ -669,6 +714,87 @@ export function TenantOnboardingModal() {
               </div>
             ) : null}
 
+            {step === 2 ? (
+              <div className="animate-fade-in space-y-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Feature access</h3>
+                    <p className="mt-0.5 text-sm text-muted">
+                      Tick the features this business can use. Unticked features are removed from their panel. Bulk
+                      quantity stock, POS and invoices are always included.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={applyRecommendedFeatures}
+                    className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-xs font-medium text-foreground hover:border-line-strong"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-accent" aria-hidden />
+                    Apply recommended
+                  </button>
+                </div>
+
+                <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/[0.07] px-3 py-2 text-xs text-emerald-800 dark:text-emerald-300">
+                  <b>Bulk quantity stock is always on</b> for every panel. Products can be added as bulk stock or (when
+                  the IMEI/Serial checkbox is ticked) as individual serial/IMEI units.
+                </div>
+
+                <div className="space-y-4">
+                  {FEATURE_GROUPS.map((group) => {
+                    const features = FEATURES.filter((feature) => feature.group === group);
+                    if (features.length === 0) return null;
+                    return (
+                      <div key={group}>
+                        <p className="mb-2 text-sm font-semibold text-foreground">{group}</p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {features.map((feature) => {
+                            const checked = selectedFeatures.has(feature.key);
+                            const recommended = recommendedFeatures(draft.industry).includes(feature.key);
+                            return (
+                              <label
+                                key={feature.key}
+                                className={cn(
+                                  "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+                                  checked
+                                    ? "border-accent-line bg-accent-soft/40"
+                                    : "border-line bg-surface-2/40 hover:border-line-strong",
+                                )}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleFeature(feature.key)}
+                                  className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+                                  aria-label={feature.label}
+                                />
+                                <span className="min-w-0">
+                                  <span className="flex flex-wrap items-center gap-1.5">
+                                    <span className="text-sm font-semibold text-foreground">{feature.label}</span>
+                                    {recommended ? (
+                                      <span className="inline-flex items-center gap-1 rounded border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                                        <Info className="h-2.5 w-2.5" aria-hidden />
+                                        Recommended
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                  <span className="mt-0.5 block text-xs leading-relaxed text-muted">
+                                    {feature.description}
+                                  </span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted">
+                  {selectedFeatures.size} optional feature{selectedFeatures.size === 1 ? "" : "s"} selected. You can
+                  change this later from the admin <b className="text-foreground">Access</b> page.
+                </p>
+              </div>
+            ) : null}
 
           </div>
 
@@ -690,7 +816,7 @@ export function TenantOnboardingModal() {
                 className="focus-ring inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg transition-opacity hover:bg-accent-hover disabled:opacity-60"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                {step === 1 ? (
+                {step === STEPS.length - 1 ? (
                   <>
                     {!saving ? (editing ? <Check className="h-4 w-4" aria-hidden /> : <Rocket className="h-4 w-4" aria-hidden />) : null}
                     {editing ? (saving ? "Saving…" : "Save changes") : "Create business"}

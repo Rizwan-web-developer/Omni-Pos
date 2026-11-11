@@ -4,6 +4,8 @@ import { AccountType, UserRole, BusinessStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword, normalizeEmail, requirePlatformAdmin } from "@/lib/auth/server";
 import { toAccountType, toIndustryType } from "@/lib/mappers";
+import { recommendedFeatures } from "@/lib/features";
+import { setTenantFeatures } from "@/lib/tenant-features";
 import { slugify } from "@/lib/utils";
 
 async function uniqueSlug(base: string): Promise<string> {
@@ -38,9 +40,15 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     include: {
       users: { select: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true }, orderBy: { createdAt: "asc" } },
+      features: { select: { key: true } },
     },
   });
-  return NextResponse.json({ businesses });
+  return NextResponse.json({
+    businesses: businesses.map((business: { features: Array<{ key: string }> }) => ({
+      ...business,
+      features: business.features.map((feature: { key: string }) => feature.key),
+    })),
+  });
 }
 
 export async function POST(req: Request) {
@@ -71,6 +79,10 @@ export async function POST(req: Request) {
     const isDemo = accountType === AccountType.DEMO;
     const trialEndsAt = isDemo ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null;
     const status = isDemo ? BusinessStatus.TRIAL : BusinessStatus.ACTIVE;
+    // Admin can send explicit checkboxes. If omitted, apply industry recommendations.
+    const requestedFeatures = Array.isArray(body?.features)
+      ? (body.features as unknown[]).map((value) => String(value))
+      : recommendedFeatures(industry);
 
     const business = await prisma.tenant.create({
       data: {
@@ -101,10 +113,13 @@ export async function POST(req: Request) {
       include: { users: { select: { id: true, name: true, email: true, role: true, isActive: true } } },
     });
 
+    const features = await setTenantFeatures(business.id, requestedFeatures);
+
     // Return credentials (password was admin-set at creation; never stored in plaintext)
     return NextResponse.json(
       {
-        business,
+        business: { ...business, features },
+        features,
         credentials: {
           email,
           password,

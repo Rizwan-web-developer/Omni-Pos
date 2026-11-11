@@ -120,6 +120,7 @@ model Tenant {
   tickets          SupportTicket[]
   brands           Brand[]
   categories       Category[]
+  features         TenantFeature[]
 
   @@index([industryType])
   @@index([status])
@@ -330,6 +331,21 @@ model Product {
   @@index([categoryId])
   @@index([barcode])
   @@index([name, category])
+}
+
+// Per-business feature access granted by the platform admin.
+// Checkbox ON -> row exists (feature added). Checkbox OFF -> row removed (feature gone).
+model TenantFeature {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  key       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@index([key])
 }
 
 model Brand {

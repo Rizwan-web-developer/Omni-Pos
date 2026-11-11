@@ -36,6 +36,8 @@ export interface Tenant {
   accountType?: AccountType;
   trialEndsAt?: string | null;
   status: TenantStatus;
+  /** Admin-granted optional feature keys (see lib/features.ts). */
+  features?: string[];
   /** Monthly recurring revenue in PKR. */
   mrr: number;
   terminals: number;

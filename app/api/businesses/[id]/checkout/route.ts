@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
+import { tenantHasFeature } from "@/lib/tenant-features";
 
 type CartItem = { productId?: string; quantity?: number; serialItemIds?: unknown };
 
@@ -18,6 +19,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const tenantId = params.id;
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true } });
     if (!tenant) return NextResponse.json({ message: "Business not found." }, { status: 404 });
+    const serialEnabled = await tenantHasFeature(tenantId, "SERIAL_IMEI");
 
     const rawItems: CartItem[] = Array.isArray(body?.items) ? (body.items as CartItem[]) : [];
     const paymentMethod = String(body?.paymentMethod ?? "CASH").toUpperCase();
@@ -54,6 +56,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const allProductIds = Array.from(new Set([...qtyById.keys(), ...serialsByProduct.keys()]));
     if (allProductIds.length === 0) return NextResponse.json({ message: "No valid items." }, { status: 400 });
 
+    if (serialsByProduct.size > 0 && !serialEnabled) {
+      return NextResponse.json(
+        { message: "IMEI/Serial tracking is not enabled for this business. Sell these items as bulk stock instead." },
+        { status: 403 },
+      );
+    }
+
     const products = await (prisma as any).product.findMany({
       where: { id: { in: allProductIds }, tenantId, deletedAt: null, isActive: true },
       select: {
@@ -84,7 +93,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     for (const [pid, q] of qtyById.entries()) {
       const p = byId.get(pid);
       if (!p) return NextResponse.json({ message: "Product not found." }, { status: 400 });
-      if (String(p.trackingType) === "SERIAL_OR_IMEI") {
+      if (serialEnabled && String(p.trackingType) === "SERIAL_OR_IMEI") {
         return NextResponse.json({ message: `Select the Serial/IMEI for "${p.name}" before checkout.` }, { status: 400 });
       }
       if (p.stockQuantity < q) {

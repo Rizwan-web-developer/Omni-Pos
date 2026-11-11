@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
+import { tenantHasFeature } from "@/lib/tenant-features";
 
 function serializeProduct(p: any) {
   return {
@@ -63,12 +64,21 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const tenant = await prisma.tenant.findUnique({ where: { id: params.id }, select: { id: true } });
   if (!tenant) return NextResponse.json({ message: "Business not found." }, { status: 404 });
 
+  const serialEnabled = await tenantHasFeature(params.id, "SERIAL_IMEI");
+
   const products = await (prisma as any).product.findMany({
     where: { tenantId: params.id, deletedAt: null },
     orderBy: { updatedAt: "desc" },
     include: { serialItems: { where: { isSold: false }, orderBy: { createdAt: "asc" } } },
   });
-  return NextResponse.json({ products: products.map(serializeProduct) });
+  return NextResponse.json({
+    products: products.map((product: any) => {
+      const serialized = serializeProduct(product);
+      if (!serialEnabled) serialized.serialItems = undefined;
+      return serialized;
+    }),
+    features: { serialEnabled },
+  });
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -112,6 +122,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (!Number.isFinite(sellingPrice) || sellingPrice < 0) return NextResponse.json({ message: "Valid selling price is required." }, { status: 400 });
 
     if (trackingType === "SERIAL_OR_IMEI") {
+      const serialFeatureEnabled = await tenantHasFeature(params.id, "SERIAL_IMEI");
+      if (!serialFeatureEnabled) {
+        return NextResponse.json(
+          { message: "IMEI/Serial tracking is not enabled for this business. Bulk quantity stock is available. Contact the platform admin to enable Access." },
+          { status: 403 },
+        );
+      }
       const serials = parseSerials(body?.serials ?? body?.serialNumbers ?? body?.imeis ?? body?.serialOrImei);
       if (serials.length === 0) {
         return NextResponse.json({ message: "Add at least one valid Serial/IMEI for serialized tracking." }, { status: 400 });

@@ -79,8 +79,8 @@ export const INDUSTRIES: IndustryModule[] = [
   },
   {
     key: "pharmacy",
-    label: "Pharmacy & Medical",
-    shortLabel: "Pharmacy",
+    label: "Medical Store",
+    shortLabel: "Medical",
     engine: "Pharmacy Panel",
     description:
       "Customized for pharmacies: batches, expiry, FEFO dispensing and regulated medicine workflows.",

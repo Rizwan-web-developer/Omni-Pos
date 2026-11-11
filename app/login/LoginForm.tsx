@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
 
 function safeNext(next: string | null): string | null {
@@ -17,6 +17,27 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [platformName, setPlatformName] = useState("OmniPos Hub");
+  const [platformLogo, setPlatformLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/platform/settings", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json().catch(() => ({}))) as { platformName?: string; platformLogoDataUrl?: string | null };
+        if (cancelled) return;
+        if (data.platformName) setPlatformName(data.platformName);
+        setPlatformLogo(data.platformLogoDataUrl ?? null);
+      } catch {
+        /* keep defaults */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -31,7 +52,7 @@ export function LoginForm() {
       const data = (await res.json().catch(() => ({}))) as { message?: string; role?: string; tenantId?: string | null; redirectTo?: string };
       if (!res.ok) throw new Error(data.message || "Login failed.");
       const isAdmin = data.role === "SUPER_ADMIN" || data.role === "SUB_ADMIN";
-      const dest = isAdmin ? (safeNext(search.get("next")) || data.redirectTo || "/") : (data.redirectTo || "/");
+      const dest = isAdmin ? (safeNext(search.get("next")) || data.redirectTo || "/dashboard") : (data.redirectTo || "/");
       router.push(dest);
       router.refresh();
     } catch (err) {
@@ -45,10 +66,15 @@ export function LoginForm() {
     <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-panel sm:p-8">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-fg">
-            <ShieldCheck className="h-5 w-5" aria-hidden />
+          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-accent text-accent-fg">
+            {platformLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={platformLogo} alt="" className="h-full w-full object-contain" />
+            ) : (
+              <ShieldCheck className="h-5 w-5" aria-hidden />
+            )}
           </div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">OmniPos Hub</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">{platformName}</h1>
           <p className="mt-1 text-sm text-muted">Sign in to your account</p>
         </div>
 

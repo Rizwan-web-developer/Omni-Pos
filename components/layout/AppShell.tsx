@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isAuthRoute = pathname === "/login" || pathname === "/signup";
+  const isAuthRoute = pathname === "/" || pathname === "/login" || pathname === "/signup";
   const isStoreRoute = pathname?.startsWith("/store");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

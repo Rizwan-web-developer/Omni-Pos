@@ -6,11 +6,11 @@ import { Providers } from "@/components/providers/Providers";
 
 export const metadata: Metadata = {
   title: {
-    default: "OmniPos Hub — Super Admin Command Center",
+    default: "OmniPos Hub — POS, Inventory & Billing for Pakistani shops",
     template: "%s · OmniPos Hub",
   },
   description:
-    "Super admin dashboard for the OmniPos Hub multi-tenant retail platform.",
+    "Multi-tenant POS and inventory SaaS for medical stores, mobile accessories, electronics, paint, cosmetics and hardware shops. Bulk stock, IMEI/Serial tracking, invoices and PKR packages.",
   applicationName: "OmniPos Hub",
 };
 

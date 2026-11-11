@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession, isPlatformAdmin } from "@/lib/auth/server";
 
+export const dynamic = "force-dynamic";
+
 const DEFAULTS = { platformName: "OmniPos Hub", platformLogoDataUrl: null as string | null };
 
 export async function GET() {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const row = await (prisma as any).platformSetting.findUnique({ where: { id: "default" } });
     return NextResponse.json({

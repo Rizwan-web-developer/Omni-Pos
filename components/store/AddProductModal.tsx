@@ -51,11 +51,14 @@ export function AddProductModal({
   open,
   onClose,
   businessId,
+  serialEnabled = false,
   onCreated,
 }: {
   open: boolean;
   onClose: () => void;
   businessId: string;
+  /** When false, only bulk quantity stock is available (IMEI/Serial feature not granted). */
+  serialEnabled?: boolean;
   onCreated: (product: CreatedProduct) => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -131,7 +134,8 @@ export function AddProductModal({
     if (name.trim().length < 2) { setError("Product name is required."); return; }
     const sp = Number(sellingPrice);
     if (!Number.isFinite(sp) || sp < 0) { setError("Valid selling price is required."); return; }
-    if (trackingType === "SERIAL_OR_IMEI" && serials.length === 0) {
+    const effectiveTracking: TrackingType = serialEnabled ? trackingType : "QUANTITY_ONLY";
+    if (effectiveTracking === "SERIAL_OR_IMEI" && serials.length === 0) {
       setError("IMEI ya Serial number add karein.");
       return;
     }
@@ -144,9 +148,9 @@ export function AddProductModal({
         costPrice: Number(costPrice || 0),
         sellingPrice: sp,
         imageUrl,
-        trackingType,
+        trackingType: effectiveTracking,
       };
-      if (trackingType === "SERIAL_OR_IMEI") {
+      if (effectiveTracking === "SERIAL_OR_IMEI") {
         payload.serials = serials;
         payload.warrantyDays = Math.max(0, Math.floor(Number(warrantyDays || 0)));
       } else {
@@ -227,22 +231,29 @@ export function AddProductModal({
             </div>
           </div>
 
-          {/* Tracking type toggle */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted">Tracking type</label>
-            <div className="inline-flex rounded-lg border border-line bg-surface-2 p-0.5" role="group" aria-label="Tracking type">
-              {([
-                { k: "QUANTITY_ONLY" as const, l: "Quantity only" },
-                { k: "SERIAL_OR_IMEI" as const, l: "Serial ya IMEI" },
-              ]).map(({ k, l }) => (
-                <button key={k} type="button" onClick={() => setTrackingType(k)}
-                  className={cn("focus-ring rounded-md px-3 py-1.5 text-sm font-medium transition-colors", trackingType === k ? "bg-accent-soft text-accent" : "text-muted hover:text-foreground")}
-                  aria-pressed={trackingType === k}>{l}</button>
-              ))}
+          {/* Tracking type toggle — only when the IMEI/Serial feature is granted */}
+          {serialEnabled ? (
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted">Tracking type</label>
+              <div className="inline-flex rounded-lg border border-line bg-surface-2 p-0.5" role="group" aria-label="Tracking type">
+                {([
+                  { k: "QUANTITY_ONLY" as const, l: "Quantity only" },
+                  { k: "SERIAL_OR_IMEI" as const, l: "Serial ya IMEI" },
+                ]).map(({ k, l }) => (
+                  <button key={k} type="button" onClick={() => setTrackingType(k)}
+                    className={cn("focus-ring rounded-md px-3 py-1.5 text-sm font-medium transition-colors", trackingType === k ? "bg-accent-soft text-accent" : "text-muted hover:text-foreground")}
+                    aria-pressed={trackingType === k}>{l}</button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
+              Bulk quantity stock is active. IMEI/Serial tracking can be enabled by the platform admin from
+              <b className="text-foreground"> Access</b>.
+            </div>
+          )}
 
-          {trackingType === "QUANTITY_ONLY" ? (
+          {!serialEnabled || trackingType === "QUANTITY_ONLY" ? (
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">Total stock quantity</label>
               <input type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} className="focus-ring h-10 w-full max-w-[220px] rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground" />
@@ -267,7 +278,7 @@ export function AddProductModal({
             <button type="button" onClick={onClose} className="focus-ring rounded-lg border border-line bg-surface px-3.5 py-2 text-sm font-medium text-foreground hover:border-line-strong">Cancel</button>
             <button type="submit" disabled={saving} className="focus-ring inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-60">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
-              {trackingType === "SERIAL_OR_IMEI" ? `Add product (${serials.length} serials)` : "Add product"}
+              {serialEnabled && trackingType === "SERIAL_OR_IMEI" ? `Add product (${serials.length} serials)` : "Add product"}
             </button>
           </div>
         </form>
