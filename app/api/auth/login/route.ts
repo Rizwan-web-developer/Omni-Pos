@@ -74,7 +74,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Server config error: AUTH_SECRET is missing or invalid. Set it in Vercel env and redeploy." }, { status: 500 });
     }
     if (/Prisma|database|Can't reach|P100|Authentication failed|ECONN|connect/i.test(msg)) {
-      return NextResponse.json({ message: "Database connection/config error. Check DATABASE_URL (Neon) in Vercel env and redeploy." }, { status: 500 });
+      return NextResponse.json({ message: "Database connection/config error. Check DATABASE_URL in Vercel env and redeploy." }, { status: 500 });
     }
     return NextResponse.json({ message: "Internal server error." }, { status: 500 });
   }
