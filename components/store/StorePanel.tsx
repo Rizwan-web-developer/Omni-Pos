@@ -29,13 +29,41 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-type Business = { id: string; uid?: string | null; businessName: string; slug?: string | null; status: string; industryType?: string; location?: string | null; ownerName?: string | null; logoDataUrl?: string | null };
+type Business = { id: string; uid?: string | null; businessName: string; slug?: string | null; status: string; industryType?: string; location?: string | null; ownerName?: string | null; phone?: string | null; logoDataUrl?: string | null };
 type SerialTag = { id: string; serialOrImei: string; isSold?: boolean; warrantyDays?: number };
-type Product = { id: string; name: string; sku?: string | null; barcode?: string | null; category?: string | null; categoryId?: string | null; brand?: string | null; brandId?: string | null; imageUrl?: string | null; trackingType?: "QUANTITY_ONLY" | "SERIAL_OR_IMEI"; costPrice: number; sellingPrice: number; stockQuantity: number; minStockAlert: number; isActive?: boolean; serialItems?: SerialTag[] };
+type Product = {
+  id: string; name: string; sku?: string | null; barcode?: string | null; category?: string | null; categoryId?: string | null;
+  brand?: string | null; brandId?: string | null; imageUrl?: string | null;
+  trackingType?: "QUANTITY_ONLY" | "SERIAL_OR_IMEI"; costPrice: number; sellingPrice: number;
+  stockQuantity: number; minStockAlert: number; isActive?: boolean; serialItems?: SerialTag[];
+  batchNumber?: string | null; expiryDate?: string | null; prescriptionRequired?: boolean;
+  shadeCode?: string | null; paintBase?: string | null; packSize?: string | null;
+  unitLabel?: string | null; installmentAvailable?: boolean; serviceItem?: boolean;
+};
+type ProductFeatureFlags = {
+  serialEnabled: boolean; batchExpiry: boolean; prescription: boolean; paintShade: boolean;
+  installments: boolean; serviceJobs: boolean; barcodeFast: boolean; multiUnit: boolean;
+  supplierLedger: boolean; offlineSync: boolean; advancedAnalytics: boolean; multiUser: boolean;
+  discounts: boolean; warranty: boolean;
+};
+const DEFAULT_FLAGS: ProductFeatureFlags = {
+  serialEnabled: false, batchExpiry: false, prescription: false, paintShade: false,
+  installments: false, serviceJobs: false, barcodeFast: false, multiUnit: false,
+  supplierLedger: false, offlineSync: false, advancedAnalytics: false, multiUser: false,
+  discounts: false, warranty: false,
+};
 // A cart line is either a bulk quantity line or a single serialized unit locked to a specific serial.
 type CartLine = { product: Product; quantity: number; serialItemId?: string; serialOrImei?: string };
-type InvoiceItem = { id: string; quantity: number; unitPrice: number; lineTotal: number; serialOrImei?: string | null; productName?: string | null; brandName?: string | null; imageUrl?: string | null; product?: { name: string; brand?: string | null; imageUrl?: string | null } };
-type Invoice = { id: string; invoiceNumber: string; customerName?: string | null; totalAmount: number; paymentMethod: string; createdAt: string; items: InvoiceItem[] };
+type InvoiceItem = { id: string; quantity: number; unitPrice: number; lineTotal: number; serialOrImei?: string | null; productName?: string | null; brandName?: string | null; imageUrl?: string | null; batchNumber?: string | null; expiryDate?: string | null; shadeCode?: string | null; unitLabel?: string | null; product?: { name: string; brand?: string | null; imageUrl?: string | null } };
+type Invoice = { id: string; invoiceNumber: string; customerName?: string | null; subtotalPkr?: number; discountPkr?: number; totalAmount: number; downPaymentPkr?: number; duePkr?: number; paymentMethod: string; prescriptionNote?: string | null; clientRef?: string | null; createdAt: string; items: InvoiceItem[] };
+
+type OfflineSale = {
+  clientRef: string;
+  payload: Record<string, unknown>;
+  total: number;
+  customerName: string;
+  createdAt: string;
+};
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -129,6 +157,28 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
+/* ---------- Offline checkout queue (OFFLINE_SYNC feature) ---------- */
+const offlineKey = (businessId: string) => `omnipos:offline:${businessId}`;
+
+function readOfflineQueue(businessId: string): OfflineSale[] {
+  try {
+    const raw = window.localStorage.getItem(offlineKey(businessId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? (parsed as OfflineSale[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeOfflineQueue(businessId: string, list: OfflineSale[]) {
+  try { window.localStorage.setItem(offlineKey(businessId), JSON.stringify(list)); } catch { /* storage unavailable */ }
+}
+
+function makeClientRef(): string {
+  const rand = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `offline-${rand}`;
+}
+
 export function StorePanel({ businessId, section }: { businessId: string; section?: TabKey }) {
   const [tab, setTab] = useState<TabKey>(section ?? "pos");
   const { theme, setTheme } = useTheme();
@@ -146,15 +196,22 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
   const [q, setQ] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customer, setCustomer] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [payMethod, setPayMethod] = useState("CASH");
+  const [discountInput, setDiscountInput] = useState("");
+  const [downPaymentInput, setDownPaymentInput] = useState("");
+  const [rxNote, setRxNote] = useState("");
+  const [barcodeInput, setBarcodeInput] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
   const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
   // Serial/IMEI selection when a SERIAL_OR_IMEI product is added to cart
   const [serialPick, setSerialPick] = useState<Product | null>(null);
   const [serialQuery, setSerialQuery] = useState("");
-  // IMEI/Serial feature granted by the platform admin (Access page).
-  const [serialEnabled, setSerialEnabled] = useState(false);
+  // Feature access granted by the platform admin (Access page).
+  const [features, setFeatures] = useState<ProductFeatureFlags>(DEFAULT_FLAGS);
+  const serialEnabled = features.serialEnabled;
+  const [pendingOffline, setPendingOffline] = useState(0);
   // Internal dialogs (no native confirm/prompt)
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -182,8 +239,9 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
       const iData = await iRes.json().catch(() => ({}));
       setBusiness(bData.business ?? null);
       setProducts(Array.isArray(pData.products) ? pData.products : []);
-      setSerialEnabled(Boolean(pData?.features?.serialEnabled));
+      setFeatures({ ...DEFAULT_FLAGS, ...(pData?.features ?? {}) });
       setInvoices(Array.isArray(iData.invoices) ? iData.invoices : []);
+      setPendingOffline(readOfflineQueue(businessId).length);
     } catch {
       setError("Failed to load store data.");
     } finally {
@@ -206,6 +264,11 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
   }, [products, q]);
 
   const cartTotal = cart.reduce((s, l) => s + l.product.sellingPrice * l.quantity, 0);
+  const cartDiscount = features.discounts ? Math.min(Math.max(0, Number(discountInput) || 0), cartTotal) : 0;
+  const cartGrand = Math.max(0, cartTotal - cartDiscount);
+  const cartDownPayment = features.installments ? Math.min(Math.max(0, Number(downPaymentInput) || 0), cartGrand) : 0;
+  const cartDue = Math.max(0, cartGrand - cartDownPayment);
+  const cartHasRx = cart.some((l) => l.product.prescriptionRequired);
 
   const todayIso = useMemo(() => isoDate(new Date()), []);
   const [salesStart, setSalesStart] = useState(() => {
@@ -226,7 +289,8 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
   }, [invoices]);
 
   const addToCart = (p: Product) => {
-    if (p.stockQuantity <= 0) { flash("err", `"${p.name}" is out of stock.`); return; }
+    const isService = Boolean(p.serviceItem);
+    if (!isService && p.stockQuantity <= 0) { flash("err", `"${p.name}" is out of stock.`); return; }
     // SERIAL/IMEI tracked (and feature granted): require selecting a specific available serial tag
     if (serialEnabled && p.trackingType === "SERIAL_OR_IMEI") {
       const available = (p.serialItems || []).filter((s) => !s.isSold);
@@ -239,11 +303,21 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
     setCart((cur) => {
       const ex = cur.find((l) => l.product.id === p.id && !l.serialItemId);
       if (ex) {
-        if (ex.quantity >= p.stockQuantity) { flash("err", "No more stock available for this item."); return cur; }
+        if (!isService && ex.quantity >= p.stockQuantity) { flash("err", "No more stock available for this item."); return cur; }
         return cur.map((l) => (l.product.id === p.id && !l.serialItemId ? { ...l, quantity: l.quantity + 1 } : l));
       }
       return [...cur, { product: p, quantity: 1 }];
     });
+  };
+
+  /** BARCODE_FAST: scan an exact barcode and add the matching product to the cart. */
+  const addByBarcode = (raw: string) => {
+    const code = raw.trim();
+    if (!code) return;
+    const match = products.find((p) => p.isActive !== false && (p.barcode ?? "").trim() === code);
+    if (!match) { flash("err", `No product with barcode "${code}".`); return; }
+    addToCart(match);
+    setBarcodeInput("");
   };
 
   const addSerialToCart = (p: Product, serial: SerialTag) => {
@@ -261,7 +335,8 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
       if (lineKey !== key) return [l];
       // Serialized lines are locked to 1 unit; qty change removes or keeps
       if (l.serialItemId) return qty <= 0 ? [] : [l];
-      const n = Math.max(0, Math.min(qty, l.product.stockQuantity));
+      const cap = l.product.serviceItem ? Number.MAX_SAFE_INTEGER : l.product.stockQuantity;
+      const n = Math.max(0, Math.min(qty, cap));
       return n === 0 ? [] : [{ ...l, quantity: n }];
     }));
   };
@@ -274,30 +349,61 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
     }, 200);
   };
 
+  const applyLocalSaleToState = (items: CartLine[]) => {
+    setProducts((cur) => cur.map((p) => {
+      const lines = items.filter((l) => l.product.id === p.id);
+      if (lines.length === 0) return p;
+      if (p.serviceItem) return p;
+      const bulkQty = lines.filter((l) => !l.serialItemId).reduce((s, l) => s + l.quantity, 0);
+      const soldSerialIds = new Set(lines.filter((l) => l.serialItemId).map((l) => l.serialItemId as string));
+      const remainingSerials = (p.serialItems || []).filter((s) => !soldSerialIds.has(s.id));
+      const nextQty = Math.max(0, p.stockQuantity - bulkQty - soldSerialIds.size);
+      return { ...p, stockQuantity: nextQty, serialItems: p.serialItems ? remainingSerials : undefined };
+    }));
+  };
+
   const checkout = async () => {
     if (cart.length === 0) return;
+    if (features.prescription && cartHasRx && !rxNote.trim()) {
+      flash("err", "Prescription product in cart: enter doctor / prescription details first.");
+      return;
+    }
     setCheckingOut(true);
-    try {
-      // Group serialized lines by product -> serialItemIds; keep bulk lines as quantity
-      const serialGroups = new Map<string, string[]>();
-      const bulk: Array<{ productId: string; quantity: number }> = [];
-      for (const l of cart) {
-        if (l.serialItemId) {
-          const arr = serialGroups.get(l.product.id) ?? [];
-          arr.push(l.serialItemId);
-          serialGroups.set(l.product.id, arr);
-        } else {
-          bulk.push({ productId: l.product.id, quantity: l.quantity });
-        }
+
+    // Group serialized lines by product -> serialItemIds; keep bulk lines as quantity
+    const serialGroups = new Map<string, string[]>();
+    const bulk: Array<{ productId: string; quantity: number }> = [];
+    for (const l of cart) {
+      if (l.serialItemId) {
+        const arr = serialGroups.get(l.product.id) ?? [];
+        arr.push(l.serialItemId);
+        serialGroups.set(l.product.id, arr);
+      } else {
+        bulk.push({ productId: l.product.id, quantity: l.quantity });
       }
-      const items = [
-        ...bulk,
-        ...Array.from(serialGroups.entries()).map(([productId, serialItemIds]) => ({ productId, serialItemIds })),
-      ];
+    }
+    const items = [
+      ...bulk,
+      ...Array.from(serialGroups.entries()).map(([productId, serialItemIds]) => ({ productId, serialItemIds })),
+    ];
+    const clientRef = makeClientRef();
+    const payload = {
+      items,
+      paymentMethod: payMethod,
+      customerName: customer,
+      customerPhone,
+      discountPkr: cartDiscount,
+      downPaymentPkr: cartDownPayment,
+      prescriptionNote: rxNote.trim() || null,
+      clientRef,
+    };
+
+    let networkFailure = false;
+    try {
       const res = await fetch(`/api/businesses/${businessId}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, paymentMethod: payMethod, customerName: customer }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Checkout failed");
@@ -305,15 +411,108 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
       setLastInvoice(inv);
       setCart([]);
       setCustomer("");
-      flash("ok", `Sale complete: ${inv.invoiceNumber}`);
+      setCustomerPhone("");
+      setDiscountInput("");
+      setDownPaymentInput("");
+      setRxNote("");
+      flash("ok", data.duplicate ? `Sale already recorded: ${inv.invoiceNumber}` : `Sale complete: ${inv.invoiceNumber}`);
       triggerPrint(inv);
       await loadAll();
     } catch (e) {
-      flash("err", e instanceof Error ? e.message : "Checkout failed");
+      networkFailure = e instanceof TypeError || (e instanceof Error && /fetch|network|load failed/i.test(e.message));
+      if (networkFailure && features.offlineSync) {
+        // Save the sale locally and replay it automatically when the connection returns.
+        const sale: OfflineSale = {
+          clientRef,
+          payload,
+          total: cartGrand,
+          customerName: customer || "Walk-in",
+          createdAt: new Date().toISOString(),
+        };
+        const queue = [...readOfflineQueue(businessId), sale];
+        writeOfflineQueue(businessId, queue);
+        setPendingOffline(queue.length);
+        const localInvoice: Invoice = {
+          id: clientRef,
+          invoiceNumber: `OFFLINE-${clientRef.slice(-6).toUpperCase()}`,
+          customerName: sale.customerName,
+          subtotalPkr: cartTotal,
+          discountPkr: cartDiscount,
+          totalAmount: cartGrand,
+          downPaymentPkr: cartDownPayment,
+          duePkr: cartDue,
+          paymentMethod: payMethod,
+          prescriptionNote: rxNote.trim() || null,
+          clientRef,
+          createdAt: sale.createdAt,
+          items: cart.map((l) => ({
+            id: `${clientRef}-${l.serialItemId || l.product.id}`,
+            quantity: l.quantity,
+            unitPrice: l.product.sellingPrice,
+            lineTotal: l.product.sellingPrice * l.quantity,
+            serialOrImei: l.serialOrImei ?? null,
+            productName: l.product.name,
+            brandName: l.product.brand ?? null,
+            imageUrl: l.product.imageUrl ?? null,
+            batchNumber: l.product.batchNumber ?? null,
+            expiryDate: l.product.expiryDate ?? null,
+            shadeCode: l.product.shadeCode ?? null,
+            unitLabel: l.product.unitLabel ?? null,
+          })),
+        };
+        applyLocalSaleToState(cart);
+        setLastInvoice(localInvoice);
+        setCart([]);
+        setCustomer("");
+        setCustomerPhone("");
+        setDiscountInput("");
+        setDownPaymentInput("");
+        setRxNote("");
+        flash("ok", `Saved offline (${queue.length} pending). It will sync automatically when online.`);
+      } else {
+        flash("err", e instanceof Error ? e.message : "Checkout failed");
+      }
     } finally {
       setCheckingOut(false);
     }
   };
+
+  /** Replay offline sales (idempotent via clientRef). */
+  const flushOffline = useCallback(async () => {
+    const queue = readOfflineQueue(businessId);
+    if (queue.length === 0) { setPendingOffline(0); return; }
+    const remaining: OfflineSale[] = [];
+    let synced = 0;
+    for (const sale of queue) {
+      try {
+        const res = await fetch(`/api/businesses/${businessId}/checkout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sale.payload),
+        });
+        if (res.ok) { synced += 1; continue; }
+        // Client errors are permanent (bad data / feature removed); keep only retryable failures.
+        if (res.status >= 500) remaining.push(sale);
+      } catch {
+        remaining.push(sale);
+      }
+    }
+    writeOfflineQueue(businessId, remaining);
+    setPendingOffline(remaining.length);
+    if (synced > 0) {
+      setNotice({ tone: "ok", text: `${synced} offline sale(s) synced with the server.` });
+      setTimeout(() => setNotice(null), 3500);
+      await loadAll();
+    }
+  }, [businessId, loadAll]);
+
+  useEffect(() => {
+    if (!features.offlineSync) return;
+    void flushOffline();
+    const onOnline = () => { void flushOffline(); };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [features.offlineSync, flushOffline]);
 
   const adjustStock = async (p: Product, delta: number) => {
     try {
@@ -415,11 +614,25 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
         {tab === "pos" ? (
           <div className="grid gap-4 lg:grid-cols-[1fr,380px]">
             <section className="rounded-xl border border-line bg-surface p-4">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-base font-semibold text-foreground">Products (select to sell)</h2>
-                <div className="relative w-full max-w-xs">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, category, brand, serial/IMEI…" className="focus-ring h-9 w-full rounded-lg border border-line bg-surface-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted" />
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                  {features.barcodeFast ? (
+                    <div className="relative w-full sm:w-64">
+                      <ScanBarcode className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-accent" />
+                      <input
+                        value={barcodeInput}
+                        onChange={(e) => setBarcodeInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addByBarcode(barcodeInput); } }}
+                        placeholder="Scan barcode + Enter"
+                        className="focus-ring h-9 w-full rounded-lg border border-accent-line bg-accent-soft/40 pl-8 pr-3 text-sm text-foreground placeholder:text-muted"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="relative w-full max-w-xs">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                    <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, category, brand, serial/IMEI…" className="focus-ring h-9 w-full rounded-lg border border-line bg-surface-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted" />
+                  </div>
                 </div>
               </div>
               {products.length === 0 ? (
@@ -428,19 +641,23 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   {filteredProducts.map((p) => {
                     const serialized = serialEnabled && p.trackingType === "SERIAL_OR_IMEI";
-                    const available = serialized ? (p.serialItems || []).filter((s) => !s.isSold).length : p.stockQuantity;
+                    const isService = Boolean(p.serviceItem);
+                    const available = serialized ? (p.serialItems || []).filter((s) => !s.isSold).length : isService ? Number.MAX_SAFE_INTEGER : p.stockQuantity;
+                    const expired = features.batchExpiry && p.expiryDate ? new Date(p.expiryDate).getTime() < Date.now() : false;
                     return (
-                      <button key={p.id} type="button" onClick={() => addToCart(p)} disabled={available <= 0} className="focus-ring rounded-lg border border-line bg-surface-2 p-3 text-left transition-colors hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50">
+                      <button key={p.id} type="button" onClick={() => addToCart(p)} disabled={available <= 0 || expired} className="focus-ring rounded-lg border border-line bg-surface-2 p-3 text-left transition-colors hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50">
                         <div className="flex items-start gap-2.5">
                           {p.imageUrl ? <img src={p.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-md border border-line object-cover" /> : null}
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-foreground">{p.name}</p>
                             <p className="mt-0.5 truncate text-xs text-muted">
-                              {[p.brand, p.category].filter(Boolean).join(" · ") || "—"} · {serialized ? <span className="text-accent">Serial/IMEI ({available})</span> : <>Stock {p.stockQuantity}</>}
+                              {[p.brand, p.category].filter(Boolean).join(" · ") || "—"} · {isService ? <span className="text-accent">Service</span> : serialized ? <span className="text-accent">Serial/IMEI ({available})</span> : <>Stock {p.stockQuantity}{p.unitLabel ? ` ${p.unitLabel}` : ""}</>}
                             </p>
+                            {features.paintShade && p.shadeCode ? <p className="mt-0.5 text-[11px] text-muted">Shade {p.shadeCode}{p.packSize ? ` · ${p.packSize}` : ""}</p> : null}
+                            {expired ? <p className="mt-0.5 text-[11px] font-medium text-rose-600 dark:text-rose-400">Expired — cannot sell</p> : null}
                           </div>
                         </div>
-                        <p className="mt-2 text-sm font-semibold tabular-nums text-accent">{formatCurrency(p.sellingPrice)}</p>
+                        <p className="mt-2 text-sm font-semibold tabular-nums text-accent">{formatCurrency(p.sellingPrice)}{p.unitLabel ? <span className="text-[11px] font-normal text-muted"> / {p.unitLabel}</span> : null}</p>
                       </button>
                     );
                   })}
@@ -449,7 +666,14 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
             </section>
 
             <aside className="rounded-xl border border-line bg-surface p-4">
-              <h2 className="text-base font-semibold text-foreground">Cart / Checkout</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-base font-semibold text-foreground">Cart / Checkout</h2>
+                {features.offlineSync ? (
+                  <span className={cn("rounded-md border px-2 py-0.5 text-[11px] font-medium", pendingOffline > 0 ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300")}>
+                    {pendingOffline > 0 ? `${pendingOffline} offline sale(s) pending` : "Offline sync ready"}
+                  </span>
+                ) : null}
+              </div>
               {cart.length === 0 ? (
                 <p className="mt-4 text-sm text-muted">Select products to add them to cart.</p>
               ) : (
@@ -464,8 +688,10 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                             {l.serialOrImei ? (
                               <p className="mt-0.5 flex items-center gap-1 font-mono text-[11px] text-accent"><Hash className="h-3 w-3" /> {l.serialOrImei}</p>
                             ) : (
-                              <p className="text-xs tabular-nums text-muted">{formatCurrency(l.product.sellingPrice)} each</p>
+                              <p className="text-xs tabular-nums text-muted">{formatCurrency(l.product.sellingPrice)} each{l.product.unitLabel ? ` / ${l.product.unitLabel}` : ""}</p>
                             )}
+                            {features.batchExpiry && l.product.batchNumber ? <p className="mt-0.5 text-[11px] text-muted">Batch {l.product.batchNumber}{l.product.expiryDate ? ` · exp ${new Date(l.product.expiryDate).toLocaleDateString("en-PK")}` : ""}</p> : null}
+                            {features.paintShade && l.product.shadeCode ? <p className="mt-0.5 text-[11px] text-muted">Shade {l.product.shadeCode}</p> : null}
                           </div>
                           <button type="button" onClick={() => setCartQty(lineKey, 0)} className="rounded p-1 text-muted hover:text-rose-500" aria-label="Remove"><Trash2 className="h-4 w-4" /></button>
                         </div>
@@ -487,20 +713,56 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                 </div>
               )}
               <div className="mt-4 space-y-2 border-t border-line pt-3">
-                <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Customer name (optional)" className="focus-ring h-9 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground placeholder:text-muted" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Customer name" className="focus-ring h-9 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground placeholder:text-muted" />
+                  <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Phone (optional)" className="focus-ring h-9 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground placeholder:text-muted" />
+                </div>
                 <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className="focus-ring h-9 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground">
                   <option value="CASH">Cash</option>
                   <option value="CARD">Card</option>
                   <option value="BANK">Bank transfer</option>
                   <option value="OTHER">Other</option>
                 </select>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted">Total</span>
-                  <span className="text-lg font-semibold tabular-nums text-foreground">{formatCurrency(cartTotal)}</span>
+                {features.discounts ? (
+                  <label className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-sm">
+                    <span className="text-muted">Discount (PKR)</span>
+                    <input type="number" min="0" step="0.01" value={discountInput} onChange={(e) => setDiscountInput(e.target.value)} placeholder="0" className="focus-ring h-7 w-28 rounded-md border border-line bg-surface px-2 text-right text-sm tabular-nums text-foreground" />
+                  </label>
+                ) : null}
+                {features.installments ? (
+                  <label className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-sm">
+                    <span className="text-muted">Down payment (PKR)</span>
+                    <input type="number" min="0" step="0.01" value={downPaymentInput} onChange={(e) => setDownPaymentInput(e.target.value)} placeholder="0" className="focus-ring h-7 w-28 rounded-md border border-line bg-surface px-2 text-right text-sm tabular-nums text-foreground" />
+                  </label>
+                ) : null}
+                {features.prescription && cartHasRx ? (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.07] p-2">
+                    <label className="mb-1 block text-[11px] font-semibold text-amber-800 dark:text-amber-300">Prescription details (required for Rx items)</label>
+                    <textarea value={rxNote} onChange={(e) => setRxNote(e.target.value)} rows={2} placeholder="Doctor name / Rx number / note" className="focus-ring w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-foreground placeholder:text-muted" />
+                  </div>
+                ) : null}
+                <div className="space-y-1 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm">
+                  {cartDiscount > 0 || cartDownPayment > 0 ? (
+                    <div className="flex items-center justify-between text-muted"><span>Subtotal</span><span className="tabular-nums">{formatCurrency(cartTotal)}</span></div>
+                  ) : null}
+                  {cartDiscount > 0 ? (
+                    <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-300"><span>Discount</span><span className="tabular-nums">− {formatCurrency(cartDiscount)}</span></div>
+                  ) : null}
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted">{cartDownPayment > 0 ? "Total" : "Grand total"}</span>
+                    <span className="text-lg font-semibold tabular-nums text-foreground">{formatCurrency(cartGrand)}</span>
+                  </div>
+                  {cartDownPayment > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between text-muted"><span>Down payment</span><span className="tabular-nums">{formatCurrency(cartDownPayment)}</span></div>
+                      <div className="flex items-center justify-between font-semibold text-amber-700 dark:text-amber-300"><span>Balance due</span><span className="tabular-nums">{formatCurrency(cartDue)}</span></div>
+                    </>
+                  ) : null}
                 </div>
                 <button type="button" onClick={() => void checkout()} disabled={cart.length === 0 || checkingOut} className="focus-ring flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg disabled:opacity-50">
                   {checkingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Checkout &amp; deduct stock
                 </button>
+                {features.offlineSync ? <p className="text-center text-[11px] text-muted">Internet drop ho to sale offline save hogi aur khud sync ho jayegi.</p> : null}
               </div>
               {lastInvoice ? (
                 <div className="mt-3 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] p-3 text-sm">
@@ -508,6 +770,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                     <div>
                       <p className="font-semibold text-foreground">Last sale: {lastInvoice.invoiceNumber}</p>
                       <p className="text-muted">{formatCurrency(lastInvoice.totalAmount)} · stock deducted</p>
+                      {(lastInvoice.downPaymentPkr ?? 0) > 0 ? <p className="text-xs text-amber-700 dark:text-amber-300">Down {formatCurrency(lastInvoice.downPaymentPkr || 0)} · Due {formatCurrency(lastInvoice.duePkr || 0)}</p> : null}
                     </div>
                     <button type="button" onClick={() => triggerPrint(lastInvoice)} className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-foreground hover:border-accent/40">
                       <Printer className="h-3.5 w-3.5" /> Print receipt
@@ -545,6 +808,24 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
               </div>
             </section>
 
+            {features.batchExpiry ? (() => {
+              const now = Date.now();
+              const soonLimit = now + 30 * 86400000;
+              const soon = products.filter((p) => p.expiryDate && new Date(p.expiryDate).getTime() <= soonLimit);
+              if (soon.length === 0) return null;
+              return (
+                <section className="rounded-xl border border-amber-500/30 bg-amber-500/[0.07] p-4">
+                  <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Expiry alert ({soon.length})</h2>
+                  <ul className="mt-2 grid gap-1 text-xs text-amber-900/90 dark:text-amber-200/90 sm:grid-cols-2">
+                    {soon.slice(0, 8).map((p) => {
+                      const expired = new Date(p.expiryDate as string).getTime() < now;
+                      return <li key={p.id}>{p.name} — <b>{expired ? "EXPIRED" : "expiring"}</b> {new Date(p.expiryDate as string).toLocaleDateString("en-PK")}{p.batchNumber ? ` (batch ${p.batchNumber})` : ""}</li>;
+                    })}
+                  </ul>
+                </section>
+              );
+            })() : null}
+
             <section className="overflow-hidden rounded-xl border border-line bg-surface">
               <div className="border-b border-line px-4 py-3">
                 <h2 className="text-base font-semibold text-foreground">Products &amp; stock</h2>
@@ -575,11 +856,26 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                                   {inactive ? <span className="ml-2 rounded bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-muted">Off</span> : null}
                                 </p>
                                 <p className="text-xs text-muted">{[p.brand, p.category].filter(Boolean).join(" · ") || p.sku || "—"}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-1">
+                                  {p.serviceItem ? <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold text-accent">SERVICE</span> : null}
+                                  {features.batchExpiry && p.batchNumber ? <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">Batch {p.batchNumber}</span> : null}
+                                  {features.batchExpiry && p.expiryDate ? (
+                                    <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", new Date(p.expiryDate).getTime() < Date.now() ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-amber-500/10 text-amber-700 dark:text-amber-300")}>
+                                      Exp {new Date(p.expiryDate).toLocaleDateString("en-PK")}
+                                    </span>
+                                  ) : null}
+                                  {features.paintShade && p.shadeCode ? <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">Shade {p.shadeCode}{p.packSize ? ` · ${p.packSize}` : ""}</span> : null}
+                                  {features.multiUnit && p.unitLabel ? <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">per {p.unitLabel}</span> : null}
+                                  {features.prescription && p.prescriptionRequired ? <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">Rx</span> : null}
+                                  {features.installments && p.installmentAvailable ? <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">Installments</span> : null}
+                                </div>
                               </div>
                             </div>
                           </td>
                           <td className="px-3 py-3">
-                            {serialized ? (
+                            {p.serviceItem ? (
+                              <span className="inline-flex items-center gap-1 rounded-md border border-accent-line bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">Service</span>
+                            ) : serialized ? (
                               <span className="inline-flex items-center gap-1 rounded-md border border-accent-line bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent"><Hash className="h-3 w-3" /> Serial/IMEI</span>
                             ) : (
                               <span className="rounded-md border border-line bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-muted">Quantity</span>
@@ -592,9 +888,9 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                               className="focus-ring h-8 w-28 rounded-md border border-line bg-surface-2 px-2 text-right text-sm tabular-nums text-foreground"
                             />
                           </td>
-                          <td className={cn("px-3 py-3 text-right font-semibold tabular-nums", soldOut ? "text-rose-600 dark:text-rose-400" : p.stockQuantity <= p.minStockAlert ? "text-amber-700 dark:text-amber-300" : "text-foreground")}>
-                            {serialized && soldOut ? "Sold out" : p.stockQuantity}
-                            {serialized && !soldOut ? <span className="block text-[11px] font-normal text-muted">available</span> : null}
+                          <td className={cn("px-3 py-3 text-right font-semibold tabular-nums", p.serviceItem ? "text-muted" : soldOut ? "text-rose-600 dark:text-rose-400" : p.stockQuantity <= p.minStockAlert ? "text-amber-700 dark:text-amber-300" : "text-foreground")}>
+                            {p.serviceItem ? "—" : serialized && soldOut ? "Sold out" : p.stockQuantity}
+                            {p.serviceItem ? <span className="block text-[11px] font-normal text-muted">no stock</span> : serialized && !soldOut ? <span className="block text-[11px] font-normal text-muted">available</span> : p.unitLabel ? <span className="block text-[11px] font-normal text-muted">{p.unitLabel}</span> : null}
                           </td>
                           <td className="px-4 py-3">
                             {serialized ? (
@@ -655,7 +951,11 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                       <td className="px-3 py-3 text-foreground">{inv.customerName || "—"}</td>
                       <td className="px-3 py-3 text-muted">{inv.paymentMethod}</td>
                       <td className="px-3 py-3 text-muted">{inv.items.map((it) => `${it.product?.name || "Item"} x${it.quantity}${it.serialOrImei ? ` [${it.serialOrImei}]` : ""}`).join(", ")}</td>
-                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-foreground">{formatCurrency(inv.totalAmount)}</td>
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-foreground">
+                        {formatCurrency(inv.totalAmount)}
+                        {(inv.duePkr ?? 0) > 0 ? <span className="block text-[11px] font-medium text-amber-700 dark:text-amber-300">Due {formatCurrency(inv.duePkr || 0)}</span> : null}
+                        {(inv.discountPkr ?? 0) > 0 ? <span className="block text-[11px] font-normal text-emerald-700 dark:text-emerald-300">Disc {formatCurrency(inv.discountPkr || 0)}</span> : null}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -708,31 +1008,38 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
               ))}
             </div>
 
-            <section aria-label="Analytics" className="rounded-xl border border-line bg-surface p-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-foreground">Analytics</h2>
-                  <p className="mt-0.5 text-sm text-muted">This shop&apos;s sales trend (PKR). Select a date range.</p>
-                </div>
-                <div className="flex flex-wrap items-end gap-2">
-                  <label className="text-xs font-medium text-muted">
-                    <span className="mb-1 block">From</span>
-                    <input type="date" value={salesStart} max={salesEnd} onChange={(e) => setSalesStart(e.target.value)} className="focus-ring h-9 rounded-lg border border-line bg-surface-2 px-2.5 text-sm text-foreground" />
-                  </label>
-                  <label className="text-xs font-medium text-muted">
-                    <span className="mb-1 block">To</span>
-                    <input type="date" value={salesEnd} min={salesStart} max={todayIso} onChange={(e) => setSalesEnd(e.target.value)} className="focus-ring h-9 rounded-lg border border-line bg-surface-2 px-2.5 text-sm text-foreground" />
-                  </label>
-                  <div className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs">
-                    <span className="text-muted">Range total: </span>
-                    <span className="font-semibold tabular-nums text-foreground">{formatCurrency(salesRangeTotal)}</span>
+            {features.advancedAnalytics ? (
+              <section aria-label="Analytics" className="rounded-xl border border-line bg-surface p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">Analytics</h2>
+                    <p className="mt-0.5 text-sm text-muted">This shop&apos;s sales trend (PKR). Select a date range.</p>
+                  </div>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <label className="text-xs font-medium text-muted">
+                      <span className="mb-1 block">From</span>
+                      <input type="date" value={salesStart} max={salesEnd} onChange={(e) => setSalesStart(e.target.value)} className="focus-ring h-9 rounded-lg border border-line bg-surface-2 px-2.5 text-sm text-foreground" />
+                    </label>
+                    <label className="text-xs font-medium text-muted">
+                      <span className="mb-1 block">To</span>
+                      <input type="date" value={salesEnd} min={salesStart} max={todayIso} onChange={(e) => setSalesEnd(e.target.value)} className="focus-ring h-9 rounded-lg border border-line bg-surface-2 px-2.5 text-sm text-foreground" />
+                    </label>
+                    <div className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs">
+                      <span className="text-muted">Range total: </span>
+                      <span className="font-semibold tabular-nums text-foreground">{formatCurrency(salesRangeTotal)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="mt-5">
-                <SalesChart series={salesSeries} />
-              </div>
-            </section>
+                <div className="mt-5">
+                  <SalesChart series={salesSeries} />
+                </div>
+              </section>
+            ) : (
+              <section aria-label="Analytics locked" className="rounded-xl border border-line bg-surface p-5">
+                <h2 className="text-base font-semibold text-foreground">Analytics</h2>
+                <p className="mt-1 text-sm text-muted">Advanced analytics (profit, trends, best sellers) is not enabled for this business. Contact the platform admin to enable <b>Advanced analytics</b> from Access.</p>
+              </section>
+            )}
 
             <section className="overflow-hidden rounded-xl border border-line bg-surface">
               <div className="border-b border-line px-4 py-3">
@@ -774,7 +1081,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
         open={addOpen}
         onClose={() => setAddOpen(false)}
         businessId={businessId}
-        serialEnabled={serialEnabled}
+        features={features}
         onCreated={(p) => {
           setProducts((cur) => [p as Product, ...cur]);
           flash("ok", `Product added${p.trackingType === "SERIAL_OR_IMEI" ? ` (${p.stockQuantity} serials)` : ""}.`);
@@ -920,6 +1227,9 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                             {bname ? <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>{bname}</div> : null}
                             <div style={{ fontWeight: 600 }}>{pname}</div>
                             {it.serialOrImei ? <div style={{ fontSize: 9 }}>S/N / IMEI: {it.serialOrImei}</div> : null}
+                            {it.shadeCode ? <div style={{ fontSize: 9 }}>Shade: {it.shadeCode}</div> : null}
+                            {it.batchNumber ? <div style={{ fontSize: 9 }}>Batch: {it.batchNumber}{it.expiryDate ? ` · Exp ${new Date(it.expiryDate).toLocaleDateString("en-PK")}` : ""}</div> : null}
+                            {it.unitLabel && it.unitLabel !== "piece" ? <div style={{ fontSize: 9 }}>{it.quantity} × {it.unitLabel}</div> : null}
                           </div>
                         </div>
                       </td>
@@ -931,9 +1241,24 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                 })}
               </tbody>
             </table>
-            <div style={{ borderTop: "1px solid #000", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700 }}>
-              <span>Grand Total</span>
-              <span>{formatCurrency(printInvoice.totalAmount)}</span>
+            <div style={{ borderTop: "1px solid #000", marginTop: 6, paddingTop: 6, fontSize: 11 }}>
+              {(printInvoice.discountPkr ?? 0) > 0 ? (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span>Subtotal</span><span>{formatCurrency(printInvoice.subtotalPkr ?? printInvoice.totalAmount)}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span>Discount</span><span>- {formatCurrency(printInvoice.discountPkr || 0)}</span></div>
+                </>
+              ) : null}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, marginTop: 2 }}>
+                <span>Grand Total</span>
+                <span>{formatCurrency(printInvoice.totalAmount)}</span>
+              </div>
+              {(printInvoice.downPaymentPkr ?? 0) > 0 ? (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}><span>Down payment</span><span>{formatCurrency(printInvoice.downPaymentPkr || 0)}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700 }}><span>Balance due</span><span>{formatCurrency(printInvoice.duePkr || 0)}</span></div>
+                </>
+              ) : null}
+              {printInvoice.prescriptionNote ? <div style={{ marginTop: 4, fontSize: 9 }}>Rx: {printInvoice.prescriptionNote}</div> : null}
             </div>
             <div style={{ textAlign: "center", marginTop: 10, fontSize: 10, borderTop: "1px dashed #000", paddingTop: 6 }}>Thank you for your purchase</div>
           </div>

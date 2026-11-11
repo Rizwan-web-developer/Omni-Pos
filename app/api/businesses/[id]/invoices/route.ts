@@ -22,7 +22,11 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   return NextResponse.json({
     invoices: invoices.map((inv: any) => ({
       ...inv,
+      subtotalPkr: Number(inv.subtotalPkr ?? 0),
+      discountPkr: Number(inv.discountPkr ?? 0),
       totalAmount: Number(inv.totalAmount),
+      downPaymentPkr: Number(inv.downPaymentPkr ?? 0),
+      duePkr: Number(inv.duePkr ?? 0),
       items: inv.items.map((it: any) => ({
         ...it,
         unitPrice: Number(it.unitPrice),

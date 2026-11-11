@@ -23,6 +23,18 @@ export type CreatedProduct = {
   [k: string]: unknown;
 };
 
+export type ProductFeatureFlags = {
+  serialEnabled?: boolean;
+  batchExpiry?: boolean;
+  prescription?: boolean;
+  paintShade?: boolean;
+  installments?: boolean;
+  multiUnit?: boolean;
+  serviceJobs?: boolean;
+};
+
+const UNIT_OPTIONS = ["piece", "pack", "box", "dozen", "kg", "gram", "litre", "ml", "foot", "meter", "bundle"] as const;
+
 function parseSerials(input: string): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -51,16 +63,17 @@ export function AddProductModal({
   open,
   onClose,
   businessId,
-  serialEnabled = false,
+  features = {},
   onCreated,
 }: {
   open: boolean;
   onClose: () => void;
   businessId: string;
-  /** When false, only bulk quantity stock is available (IMEI/Serial feature not granted). */
-  serialEnabled?: boolean;
+  /** Feature access granted by the platform admin (Access page). */
+  features?: ProductFeatureFlags;
   onCreated: (product: CreatedProduct) => void;
 }) {
+  const serialEnabled = Boolean(features.serialEnabled);
   const panelRef = useRef<HTMLDivElement>(null);
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -72,10 +85,21 @@ export function AddProductModal({
   const [costPrice, setCostPrice] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [barcode, setBarcode] = useState("");
   const [trackingType, setTrackingType] = useState<TrackingType>("QUANTITY_ONLY");
   const [stockQuantity, setStockQuantity] = useState("0");
   const [serialText, setSerialText] = useState("");
   const [warrantyDays, setWarrantyDays] = useState("0");
+  // Optional feature-gated fields
+  const [batchNumber, setBatchNumber] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [prescriptionRequired, setPrescriptionRequired] = useState(false);
+  const [shadeCode, setShadeCode] = useState("");
+  const [paintBase, setPaintBase] = useState("");
+  const [packSize, setPackSize] = useState("");
+  const [unitLabel, setUnitLabel] = useState("");
+  const [installmentAvailable, setInstallmentAvailable] = useState(false);
+  const [serviceItem, setServiceItem] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -118,6 +142,9 @@ export function AddProductModal({
     setName(""); setCategoryId(""); setBrandId(""); setCostPrice(""); setSellingPrice("");
     setImageUrl(null); setTrackingType("QUANTITY_ONLY"); setStockQuantity("0");
     setSerialText(""); setWarrantyDays("0"); setError("");
+    setBarcode(""); setBatchNumber(""); setExpiryDate(""); setPrescriptionRequired(false);
+    setShadeCode(""); setPaintBase(""); setPackSize(""); setUnitLabel("");
+    setInstallmentAvailable(false); setServiceItem(false);
   };
 
   const onImage = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -145,11 +172,25 @@ export function AddProductModal({
         name: name.trim(),
         categoryId: categoryId || null,
         brandId: brandId || null,
+        barcode: barcode.trim() || null,
         costPrice: Number(costPrice || 0),
         sellingPrice: sp,
         imageUrl,
         trackingType: effectiveTracking,
       };
+      if (features.batchExpiry) {
+        payload.batchNumber = batchNumber.trim() || null;
+        payload.expiryDate = expiryDate || null;
+      }
+      if (features.prescription) payload.prescriptionRequired = prescriptionRequired;
+      if (features.paintShade) {
+        payload.shadeCode = shadeCode.trim() || null;
+        payload.paintBase = paintBase.trim() || null;
+        payload.packSize = packSize.trim() || null;
+      }
+      if (features.multiUnit) payload.unitLabel = unitLabel || null;
+      if (features.installments) payload.installmentAvailable = installmentAvailable;
+      if (features.serviceJobs) payload.serviceItem = serviceItem;
       if (effectiveTracking === "SERIAL_OR_IMEI") {
         payload.serials = serials;
         payload.warrantyDays = Math.max(0, Math.floor(Number(warrantyDays || 0)));
@@ -213,6 +254,10 @@ export function AddProductModal({
               <label className="mb-1 block text-xs font-medium text-muted">Selling price (PKR) *</label>
               <input required type="number" min="0" step="0.01" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} placeholder="0" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground placeholder:text-muted" />
             </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-muted">Barcode (optional)</label>
+              <input value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="Scan or type the barcode" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground placeholder:text-muted" />
+            </div>
           </div>
 
           <div>
@@ -271,6 +316,71 @@ export function AddProductModal({
               {serials.length > 0 ? <p className="mt-1 text-xs text-muted"><span className="font-semibold tabular-nums text-foreground">{serials.length}</span> serial/IMEI</p> : null}
             </div>
           )}
+
+          {features.batchExpiry || features.prescription || features.paintShade || features.multiUnit || features.installments || features.serviceJobs ? (
+            <div className="rounded-lg border border-line bg-surface-2/60 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.04em] text-muted">Workflow options (Access-enabled)</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {features.batchExpiry ? (
+                  <>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-muted">Batch number</label>
+                      <input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} placeholder="e.g. BATCH-2026-A" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-foreground placeholder:text-muted" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-muted">Expiry date</label>
+                      <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="focus-ring h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-foreground" />
+                    </div>
+                  </>
+                ) : null}
+                {features.paintShade ? (
+                  <>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-muted">Shade code</label>
+                      <input value={shadeCode} onChange={(e) => setShadeCode(e.target.value)} placeholder="e.g. OW-2145" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-foreground placeholder:text-muted" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-muted">Base type</label>
+                      <input value={paintBase} onChange={(e) => setPaintBase(e.target.value)} placeholder="e.g. Water-based" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-foreground placeholder:text-muted" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-muted">Pack size</label>
+                      <input value={packSize} onChange={(e) => setPackSize(e.target.value)} placeholder="e.g. 4 litre" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-foreground placeholder:text-muted" />
+                    </div>
+                  </>
+                ) : null}
+                {features.multiUnit ? (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted">Selling unit</label>
+                    <select value={unitLabel} onChange={(e) => setUnitLabel(e.target.value)} className="focus-ring h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-foreground">
+                      <option value="">Piece (default)</option>
+                      {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </div>
+                ) : null}
+                <div className="flex flex-col gap-2 sm:col-span-2">
+                  {features.prescription ? (
+                    <label className="flex items-center gap-2 text-sm text-foreground">
+                      <input type="checkbox" checked={prescriptionRequired} onChange={(e) => setPrescriptionRequired(e.target.checked)} className="h-4 w-4 accent-[rgb(var(--accent))]" />
+                      Prescription required (Rx) — ask for doctor/prescription details at checkout
+                    </label>
+                  ) : null}
+                  {features.installments ? (
+                    <label className="flex items-center gap-2 text-sm text-foreground">
+                      <input type="checkbox" checked={installmentAvailable} onChange={(e) => setInstallmentAvailable(e.target.checked)} className="h-4 w-4 accent-[rgb(var(--accent))]" />
+                      Allow installment sale (down payment + due)
+                    </label>
+                  ) : null}
+                  {features.serviceJobs ? (
+                    <label className="flex items-center gap-2 text-sm text-foreground">
+                      <input type="checkbox" checked={serviceItem} onChange={(e) => setServiceItem(e.target.checked)} className="h-4 w-4 accent-[rgb(var(--accent))]" />
+                      Service / repair item (no stock deduction)
+                    </label>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {error ? <div className="rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">{error}</div> : null}
 

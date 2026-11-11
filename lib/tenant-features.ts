@@ -14,6 +14,23 @@ export async function getTenantFeatureKeys(tenantId: string): Promise<FeatureKey
 }
 
 /**
+ * Boolean map of every optional feature for a business.
+ * Used by APIs and the shop panel to decide which workflow fields/actions are available.
+ */
+export type TenantFlags = Record<FeatureKey, boolean>;
+
+const EMPTY_FLAGS = FEATURE_KEYS.reduce((acc, key) => ({ ...acc, [key]: false }), {} as TenantFlags);
+
+export async function getTenantFlags(tenantId: string): Promise<TenantFlags> {
+  try {
+    const enabled = new Set(await getTenantFeatureKeys(tenantId));
+    return FEATURE_KEYS.reduce((acc, key) => ({ ...acc, [key]: enabled.has(key) }), { ...EMPTY_FLAGS });
+  } catch {
+    return { ...EMPTY_FLAGS };
+  }
+}
+
+/**
  * Does a business currently have a feature?
  */
 export async function tenantHasFeature(tenantId: string, key: FeatureKey): Promise<boolean> {

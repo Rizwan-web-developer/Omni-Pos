@@ -17,6 +17,8 @@ import {
   ShieldCheck,
   ShoppingCart,
   Tag,
+  Truck,
+  Wrench,
   X,
 } from "lucide-react";
 
@@ -33,6 +35,8 @@ const NAV = [
   { key: "overview", label: "Overview", href: "", icon: LayoutDashboard },
   { key: "pos", label: "POS / Sell", href: "/pos", icon: ShoppingCart },
   { key: "inventory", label: "Inventory / Stock", href: "/inventory", icon: Boxes },
+  { key: "service-jobs", label: "Service Jobs", href: "/service-jobs", icon: Wrench, feature: "SERVICE_JOBS" },
+  { key: "suppliers", label: "Suppliers", href: "/suppliers", icon: Truck, feature: "SUPPLIER_LEDGER" },
   { key: "brands", label: "Brands", href: "/brands", icon: Tag },
   { key: "categories", label: "Categories", href: "/categories", icon: Layers },
   { key: "sales", label: "Sales / Invoices", href: "/sales", icon: ReceiptText },
@@ -61,6 +65,7 @@ export function ShopShell({ businessId, children }: { businessId: string; childr
   const [mobileOpen, setMobileOpen] = useState(false);
   const [shop, setShop] = useState<Shop | null>(null);
   const [admin, setAdmin] = useState<AdminSettings>(DEFAULT_ADMIN_SETTINGS);
+  const [featureKeys, setFeatureKeys] = useState<string[]>([]);
 
   useEffect(() => {
     const sync = () => setAdmin(loadAdminSettings());
@@ -96,7 +101,22 @@ export function ShopShell({ businessId, children }: { businessId: string; childr
   const shopName = shop?.businessName || "My Shop";
   const panelLabel = INDUSTRY_LABEL[String(shop?.industryType || "")] || "Shop Panel";
 
-  const nav = useMemo(() => NAV.map((n) => ({ ...n, full: `${base}${n.href}` })), [base]);
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch(`/api/businesses/${businessId}/features`, { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && Array.isArray(data.features)) setFeatureKeys(data.features.map((k: unknown) => String(k)));
+      } catch { /* ignore */ }
+    })();
+  }, [businessId]);
+
+  const nav = useMemo(
+    () => NAV
+      .filter((n) => !("feature" in n) || featureKeys.includes((n as any).feature))
+      .map((n) => ({ ...n, full: `${base}${n.href}` })),
+    [base, featureKeys],
+  );
   const active = (full: string) => (full === base ? pathname === base || pathname === `${base}/` : pathname.startsWith(full));
 
   const SidebarBody = ({ onNavigate }: { onNavigate?: () => void }) => (

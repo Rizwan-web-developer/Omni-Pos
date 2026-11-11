@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
-import { tenantHasFeature } from "@/lib/tenant-features";
+import { getTenantFlags, tenantHasFeature } from "@/lib/tenant-features";
+import { buildFeatureProductFields, serializeFeatureProductFields } from "@/lib/product-options";
 
 function serializeProduct(p: any) {
   return {
@@ -23,6 +24,7 @@ function serializeProduct(p: any) {
     isActive: p.isActive !== false,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
+    ...serializeFeatureProductFields(p),
     // Include available (unsold) serials for serialized products (used by POS selection)
     serialItems: Array.isArray(p.serialItems)
       ? p.serialItems.map((s: any) => ({
@@ -65,6 +67,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (!tenant) return NextResponse.json({ message: "Business not found." }, { status: 404 });
 
   const serialEnabled = await tenantHasFeature(params.id, "SERIAL_IMEI");
+  const flags = await getTenantFlags(params.id);
 
   const products = await (prisma as any).product.findMany({
     where: { tenantId: params.id, deletedAt: null },
@@ -77,7 +80,22 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       if (!serialEnabled) serialized.serialItems = undefined;
       return serialized;
     }),
-    features: { serialEnabled },
+    features: {
+      serialEnabled,
+      batchExpiry: flags.BATCH_EXPIRY,
+      prescription: flags.PRESCRIPTION,
+      paintShade: flags.PAINT_SHADE,
+      installments: flags.INSTALLMENTS,
+      serviceJobs: flags.SERVICE_JOBS,
+      barcodeFast: flags.BARCODE_FAST,
+      multiUnit: flags.MULTI_UNIT,
+      supplierLedger: flags.SUPPLIER_LEDGER,
+      offlineSync: flags.OFFLINE_SYNC,
+      advancedAnalytics: flags.ADVANCED_ANALYTICS,
+      multiUser: flags.MULTI_USER,
+      discounts: flags.DISCOUNTS,
+      warranty: flags.WARRANTY,
+    },
   });
 }
 
@@ -121,6 +139,23 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (name.length < 2) return NextResponse.json({ message: "Product name is required." }, { status: 400 });
     if (!Number.isFinite(sellingPrice) || sellingPrice < 0) return NextResponse.json({ message: "Valid selling price is required." }, { status: 400 });
 
+    if (barcode) {
+      const barcodeConflict = await (prisma as any).product.findFirst({
+        where: { tenantId: params.id, barcode, deletedAt: null },
+        select: { id: true, name: true },
+      });
+      if (barcodeConflict) {
+        return NextResponse.json({ message: `Barcode already used by "${barcodeConflict.name}".` }, { status: 409 });
+      }
+    }
+
+    const flags = await getTenantFlags(params.id);
+    const featureFields = buildFeatureProductFields(body as Record<string, any>, flags);
+    if (featureFields.error) return NextResponse.json({ message: featureFields.error }, { status: 400 });
+    if (featureFields.data.expiryDate instanceof Date && (featureFields.data.expiryDate as Date).getTime() < Date.now()) {
+      return NextResponse.json({ message: "Expiry date cannot be in the past." }, { status: 400 });
+    }
+
     if (trackingType === "SERIAL_OR_IMEI") {
       const serialFeatureEnabled = await tenantHasFeature(params.id, "SERIAL_IMEI");
       if (!serialFeatureEnabled) {
@@ -162,6 +197,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             sellingPrice,
             stockQuantity: serials.length, // available count = unsold serials
             minStockAlert,
+            ...featureFields.data,
           },
         });
         await tx.serialItem.createMany({
@@ -199,6 +235,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         sellingPrice,
         stockQuantity,
         minStockAlert,
+        ...featureFields.data,
       },
       include: { serialItems: { where: { isSold: false } } },
     });

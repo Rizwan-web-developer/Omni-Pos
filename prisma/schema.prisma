@@ -84,6 +84,19 @@ enum TicketPriority {
   URGENT
 }
 
+enum ServiceJobStatus {
+  RECEIVED
+  IN_PROGRESS
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum SupplierEntryType {
+  PURCHASE
+  PAYMENT
+}
+
 // Business record (admin-managed). Kept as `Tenant` model name for compatibility with existing relations.
 model Tenant {
   id               String         @id @default(cuid())
@@ -121,6 +134,8 @@ model Tenant {
   brands           Brand[]
   categories       Category[]
   features         TenantFeature[]
+  serviceJobs      ServiceJob[]
+  suppliers        Supplier[]
 
   @@index([industryType])
   @@index([status])
@@ -315,6 +330,16 @@ model Product {
   sellingPrice   Decimal      @db.Decimal(10, 2)
   stockQuantity  Int          @default(0) // QUANTITY_ONLY: total count; SERIAL_OR_IMEI: available (unsold) serials count
   minStockAlert  Int          @default(5)
+  // --- Optional workflows (each gated by its Access feature) ---
+  batchNumber          String?   // BATCH_EXPIRY
+  expiryDate           DateTime? // BATCH_EXPIRY
+  prescriptionRequired Boolean   @default(false) // PRESCRIPTION
+  shadeCode            String?   // PAINT_SHADE
+  paintBase            String?   // PAINT_SHADE
+  packSize             String?   // PAINT_SHADE
+  unitLabel            String?   // MULTI_UNIT (piece, kg, litre, foot…)
+  installmentAvailable Boolean   @default(false) // INSTALLMENTS
+  serviceItem          Boolean   @default(false) // SERVICE_JOBS (non-stock service line)
   isActive       Boolean      @default(true)
   deletedAt      DateTime?
   createdAt      DateTime     @default(now())
@@ -425,15 +450,24 @@ model Invoice {
   tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   invoiceNumber String
   customerName  String?
+  customerPhone String?
+  subtotalPkr   Decimal    @db.Decimal(10, 2) @default(0)
+  discountPkr   Decimal    @db.Decimal(10, 2) @default(0)
   totalAmount   Decimal    @db.Decimal(10, 2)
+  downPaymentPkr Decimal   @db.Decimal(10, 2) @default(0)
+  duePkr        Decimal    @db.Decimal(10, 2) @default(0)
   paymentMethod String     @default("CASH")
+  prescriptionNote String? // PRESCRIPTION: doctor / Rx details
+  clientRef     String?    // OFFLINE_SYNC: idempotent client reference
   syncStatus    SyncStatus @default(SYNCED)
   createdAt     DateTime   @default(now())
 
   items         InvoiceItem[]
 
+  @@unique([tenantId, clientRef])
   @@index([tenantId])
   @@index([syncStatus])
+  @@index([createdAt])
 }
 
 model InvoiceItem {
@@ -448,6 +482,10 @@ model InvoiceItem {
   productName  String?     // Snapshot for printing/history
   brandName    String?     // Snapshot for printing/history
   imageUrl     String?     // Snapshot for printing/history
+  batchNumber  String?     // Snapshot for pharmacy receipt
+  expiryDate   DateTime?   // Snapshot for pharmacy receipt
+  shadeCode    String?     // Snapshot for paint receipt
+  unitLabel    String?     // Snapshot for hardware/paint receipt
   quantity     Int
   unitPrice    Decimal     @db.Decimal(10, 2)
   lineTotal    Decimal     @db.Decimal(10, 2)
@@ -455,4 +493,60 @@ model InvoiceItem {
   @@index([invoiceId])
   @@index([productId])
   @@index([serialItemId])
+}
+
+// SERVICE_JOBS feature: repair / service job cards for a shop.
+model ServiceJob {
+  id            String           @id @default(cuid())
+  tenantId      String
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobNumber     String
+  customerName  String
+  customerPhone String?
+  device        String
+  issue         String?
+  notes         String?
+  status        ServiceJobStatus @default(RECEIVED)
+  estimatePkr   Decimal          @default(0) @db.Decimal(10, 2)
+  deliveredAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// SUPPLIER_LEDGER feature: suppliers + purchase/payment entries.
+model Supplier {
+  id                String          @id @default(cuid())
+  tenantId          String
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name              String
+  phone             String?
+  address           String?
+  openingBalancePkr Decimal         @default(0) @db.Decimal(10, 2)
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  entries           SupplierEntry[]
+
+  @@index([tenantId])
+  @@index([name])
+}
+
+model SupplierEntry {
+  id          String            @id @default(cuid())
+  tenantId    String
+  supplierId  String
+  supplier    Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  type        SupplierEntryType @default(PURCHASE)
+  amountPkr   Decimal           @db.Decimal(10, 2)
+  note        String?
+  createdAt   DateTime          @default(now())
+
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([createdAt])
 }

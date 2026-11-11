@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
+import { getTenantFlags } from "@/lib/tenant-features";
+import { buildFeatureProductFields, serializeFeatureProductFields } from "@/lib/product-options";
 
 function serializeProduct(p: any) {
   return {
     ...p,
     costPrice: Number(p.costPrice),
     sellingPrice: Number(p.sellingPrice),
+    ...serializeFeatureProductFields(p),
     serialItems: Array.isArray(p.serialItems)
       ? p.serialItems.map((s: any) => ({ id: s.id, serialOrImei: s.serialOrImei, isSold: s.isSold, warrantyDays: s.warrantyDays }))
       : undefined,
@@ -73,6 +76,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string; pr
     if (body.costPrice !== undefined && Number.isFinite(Number(body.costPrice))) data.costPrice = Math.max(0, Number(body.costPrice));
     if (body.sellingPrice !== undefined && Number.isFinite(Number(body.sellingPrice))) data.sellingPrice = Math.max(0, Number(body.sellingPrice));
     if (body.minStockAlert !== undefined && Number.isFinite(Number(body.minStockAlert))) data.minStockAlert = Math.max(0, Math.floor(Number(body.minStockAlert)));
+
+    const flags = await getTenantFlags(params.id);
+    const featureFields = buildFeatureProductFields(body as Record<string, any>, flags);
+    if (featureFields.error) return NextResponse.json({ message: featureFields.error }, { status: 400 });
+    Object.assign(data, featureFields.data);
 
     const tracking = String(existing.trackingType ?? "QUANTITY_ONLY");
 
