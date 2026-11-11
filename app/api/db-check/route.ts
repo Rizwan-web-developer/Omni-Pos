@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/db";
+import { normalizeDatabaseUrl, prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ function sanitize(message: string): string {
 export async function GET() {
   const hasUrl = Boolean(process.env.DATABASE_URL);
   const driver = (() => {
-    const raw = process.env.DATABASE_URL ?? "";
+    const raw = normalizeDatabaseUrl(process.env.DATABASE_URL) ?? "";
     try {
       const parsed = new URL(raw);
       return {
