@@ -150,29 +150,29 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     await prisma.$transaction(async (tx) => {
       const t: any = tx as any;
       // Invoice items reference products (Restrict) and serials; remove them before products/serials/invoices.
-      await tx.invoiceItem.deleteMany({ where: { invoice: { tenantId } } });
-      await tx.invoice.deleteMany({ where: { tenantId } });
+      await t.invoiceItem.deleteMany({ where: { invoice: { tenantId } } });
+      await t.invoice.deleteMany({ where: { tenantId } });
 
       // Serials belong to products/tenant; remove explicitly (tenantId FK not modeled as a Tenant relation).
       await t.serialItem.deleteMany({ where: { tenantId } });
 
       // Product extension rows (cascade from product in schema, but explicit is safe).
-      await tx.mobileItem.deleteMany({ where: { product: { tenantId } } });
-      await tx.pharmacyItem.deleteMany({ where: { product: { tenantId } } });
-      await tx.electronicsItem.deleteMany({ where: { product: { tenantId } } });
+      await t.mobileItem.deleteMany({ where: { product: { tenantId } } });
+      await t.pharmacyItem.deleteMany({ where: { product: { tenantId } } });
+      await t.electronicsItem.deleteMany({ where: { product: { tenantId } } });
 
-      await tx.product.deleteMany({ where: { tenantId } });
-      await tx.brand.deleteMany({ where: { tenantId } });
-      await tx.category.deleteMany({ where: { tenantId } });
+      await t.product.deleteMany({ where: { tenantId } });
+      await t.brand.deleteMany({ where: { tenantId } });
+      await t.category.deleteMany({ where: { tenantId } });
 
-      await tx.subscriptionVoucher.deleteMany({ where: { tenantId } });
-      await tx.billingInvoice.deleteMany({ where: { tenantId } });
-      await tx.businessSubscription.deleteMany({ where: { tenantId } });
-      await tx.syncHealthLog.deleteMany({ where: { tenantId } });
-      await tx.supportTicket.deleteMany({ where: { tenantId } });
-      await tx.user.deleteMany({ where: { tenantId } });
+      await t.subscriptionVoucher.deleteMany({ where: { tenantId } });
+      await t.billingInvoice.deleteMany({ where: { tenantId } });
+      await t.businessSubscription.deleteMany({ where: { tenantId } });
+      await t.syncHealthLog.deleteMany({ where: { tenantId } });
+      await t.supportTicket.deleteMany({ where: { tenantId } });
+      await t.user.deleteMany({ where: { tenantId } });
 
-      await tx.tenant.delete({ where: { id: tenantId } });
+      await t.tenant.delete({ where: { id: tenantId } });
     });
 
     return NextResponse.json({ ok: true, deletedId: existing.id, name: existing.businessName });
