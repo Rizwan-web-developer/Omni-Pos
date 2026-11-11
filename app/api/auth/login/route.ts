@@ -68,6 +68,14 @@ export async function POST(req: Request) {
     return res;
   } catch (error) {
     console.error("Login error:", error);
+    const msg = error instanceof Error ? error.message : String(error);
+    // Surface actionable config errors (helps diagnose Vercel env/DB issues) without leaking secrets.
+    if (/AUTH_SECRET/i.test(msg)) {
+      return NextResponse.json({ message: "Server config error: AUTH_SECRET is missing or invalid. Set it in Vercel env and redeploy." }, { status: 500 });
+    }
+    if (/Prisma|database|Can't reach|P100|Authentication failed|ECONN|connect/i.test(msg)) {
+      return NextResponse.json({ message: "Database connection/config error. Check DATABASE_URL (Neon) in Vercel env and redeploy." }, { status: 500 });
+    }
     return NextResponse.json({ message: "Internal server error." }, { status: 500 });
   }
 }
