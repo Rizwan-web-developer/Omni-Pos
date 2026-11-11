@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_COOKIE, getAuthSecret, verifySession } from "@/lib/auth/edge";
 
 const PUBLIC_PATHS = ["/login"];
-const PUBLIC_API = /^\/api\/auth\/(login|logout|me)/;
+const PUBLIC_API = /^\/api\/(?:auth\/(?:login|logout|me)|db-check)/;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
