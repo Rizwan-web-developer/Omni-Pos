@@ -31,6 +31,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <link rel="icon" href="/logo.png" />
       </head>
       <body>
         <a href="#main-content" className="skip-link">
