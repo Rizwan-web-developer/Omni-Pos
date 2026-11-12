@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Building2,
   Check,
+  KeyRound,
   Loader2,
   Lock,
   Mail,
@@ -22,29 +23,11 @@ import { INDUSTRIES } from "@/lib/data";
 import type { IndustryKey } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const ALLOWED_INDUSTRIES: IndustryKey[] = [
-  "pharmacy",
-  "mobile",
-  "paint-shop",
-  "cosmetics-shop",
-  "electronics",
-  "hardware-shop",
-];
-
 const PACKAGES = [
-  { key: "starter", label: "Starter", price: "PKR 5,000/mo" },
-  { key: "pro", label: "Growth", price: "PKR 15,000/mo" },
-  { key: "enterprise", label: "Pro", price: "PKR 25,000/mo" },
+  { key: "starter", label: "Starter", price: "$19/mo" },
+  { key: "pro", label: "Growth", price: "$49/mo" },
+  { key: "marketing-agency", label: "Marketing Agency", price: "$99/mo" },
 ] as const;
-
-const INDUSTRY_LABEL: Record<string, string> = {
-  pharmacy: "Medical Stores",
-  mobile: "Mobile Accessories",
-  "paint-shop": "Paint Shops",
-  "cosmetics-shop": "Cosmetics",
-  electronics: "Electronics Shops",
-  "hardware-shop": "Hardware Shops",
-};
 
 function fieldClass(hasError: boolean): string {
   return cn(
@@ -57,21 +40,24 @@ export function SignupForm() {
   const router = useRouter();
   const search = useSearchParams();
   const initialPackage = search.get("package");
+  const [step, setStep] = useState<"form" | "otp">("form");
   const [form, setForm] = useState({
     name: "",
     ownerName: "",
     email: "",
     phone: "",
     location: "",
-    industry: "pharmacy" as IndustryKey,
+    industry: "electronics" as IndustryKey,
     package: PACKAGES.some((pkg) => pkg.key === initialPackage) ? (initialPackage as string) : "pro",
     password: "",
     confirm: "",
   });
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [platformName, setPlatformName] = useState("OmniPos Hub");
-  const [platformLogo, setPlatformLogo] = useState<string | null>(null);
+  const [info, setInfo] = useState("");
+  const [platformName, setPlatformName] = useState("MNI POS");
+  const [platformLogo, setPlatformLogo] = useState<string | null>("/logo.png");
 
   useEffect(() => {
     let cancelled = false;
@@ -81,22 +67,21 @@ export function SignupForm() {
         if (!res.ok) return;
         const data = (await res.json().catch(() => ({}))) as { platformName?: string; platformLogoDataUrl?: string | null };
         if (cancelled) return;
-        if (data.platformName) setPlatformName(data.platformName);
-        setPlatformLogo(data.platformLogoDataUrl ?? null);
+        if (data.platformName && data.platformName !== "OmniPos Hub") setPlatformName(data.platformName);
+        setPlatformLogo(data.platformLogoDataUrl ?? "/logo.png");
       } catch {
         /* keep defaults */
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const patch = (next: Partial<typeof form>) => setForm((current) => ({ ...current, ...next }));
 
-  const onSubmit = async (event: FormEvent) => {
+  const sendOtp = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
+    setInfo("");
     if (form.password !== form.confirm) {
       setError("Passwords do not match.");
       return;
@@ -107,10 +92,11 @@ export function SignupForm() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/signup", {
+      const res = await fetch("/api/auth/otp/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          purpose: "SIGNUP",
           name: form.name,
           ownerName: form.ownerName,
           email: form.email,
@@ -120,6 +106,27 @@ export function SignupForm() {
           package: form.package,
           password: form.password,
         }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      if (!res.ok) throw new Error(data.message || "Could not send verification code.");
+      setStep("otp");
+      setInfo(data.message || "Verification code sent to your email.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send verification code.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async (event: FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ purpose: "SIGNUP", email: form.email, code }),
       });
       const data = (await res.json().catch(() => ({}))) as { message?: string; redirectTo?: string };
       if (!res.ok) throw new Error(data.message || "Signup failed.");
@@ -138,27 +145,26 @@ export function SignupForm() {
         <aside className="hidden lg:flex lg:flex-col lg:justify-between lg:rounded-2xl lg:border lg:border-line lg:bg-surface lg:p-7">
           <div>
             <Link href="/" className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-accent text-accent-fg">
+              <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-line bg-white p-0.5">
                 {platformLogo ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={platformLogo} alt="" className="h-full w-full object-contain" />
                 ) : (
-                  <Store className="h-5 w-5" aria-hidden />
+                  <Store className="h-5 w-5 text-accent" aria-hidden />
                 )}
               </span>
               <span className="text-base font-semibold tracking-tight">{platformName}</span>
             </Link>
             <h1 className="mt-8 text-2xl font-semibold tracking-tight">Start your 7-day free trial</h1>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              Your own secure shop panel with bulk quantity stock, POS, printable invoices and the features recommended
-              for your industry.
+              Full access to every feature for 7 days. After the trial, upgrade to keep using your account — your data stays preserved.
             </p>
             <ul className="mt-6 space-y-3 text-sm">
               {[
-                "No card required for the trial",
+                "Full access to all features during the trial",
                 "Bulk quantity stock always included",
-                "IMEI/Serial tracking for the right trades",
-                "Data preserved when you convert to paid",
+                "POS, invoices, inventory, staff & more",
+                "Your data is preserved if the trial ends",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2">
                   <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -172,7 +178,7 @@ export function SignupForm() {
           <div className="rounded-xl border border-line bg-surface-2 p-4">
             <p className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-accent" aria-hidden /> Secure by design</p>
             <p className="mt-1 text-xs leading-relaxed text-muted">
-              Signed HttpOnly sessions, scrypt password hashing and per-business data isolation.
+              Email verification, signed sessions, strong password hashing, and per-business data isolation.
             </p>
           </div>
         </aside>
@@ -188,133 +194,160 @@ export function SignupForm() {
             </div>
 
             <div className="rounded-2xl border border-line bg-surface p-5 shadow-panel sm:p-7">
-              <h2 className="text-xl font-semibold tracking-tight">Create your business account</h2>
-              <p className="mt-1 text-sm text-muted">Takes about a minute. Trial is active immediately.</p>
+              <h2 className="text-xl font-semibold tracking-tight">{step === "otp" ? "Verify your email" : "Create your business account"}</h2>
+              <p className="mt-1 text-sm text-muted">{step === "otp" ? "Enter the 6-digit code sent to your email to activate your trial." : "Start a 7-day free trial with full access to every feature."}</p>
 
               {error ? (
                 <div role="alert" className="mt-4 rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2.5 text-sm text-rose-700 dark:text-rose-300">
                   {error}
                 </div>
               ) : null}
+              {info ? (
+                <div className="mt-4 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-sm text-emerald-700 dark:text-emerald-300">
+                  {info}
+                </div>
+              ) : null}
 
-              <form onSubmit={onSubmit} autoComplete="off" className="mt-5 space-y-4">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <label htmlFor="signup-name" className="mb-1.5 block text-sm font-medium">Business name <span className="text-rose-500">*</span></label>
-                    <div className="relative">
-                      <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-                      <input id="signup-name" required value={form.name} onChange={(e) => patch({ name: e.target.value })} placeholder="e.g. Al Madina Medical Store" className={cn(fieldClass(false), "pl-9")} />
+              {step === "form" ? (
+                <form onSubmit={sendOtp} autoComplete="off" className="mt-5 space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <label htmlFor="signup-name" className="mb-1.5 block text-sm font-medium">Business name <span className="text-rose-500">*</span></label>
+                      <div className="relative">
+                        <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                        <input id="signup-name" required value={form.name} onChange={(e) => patch({ name: e.target.value })} placeholder="e.g. Acme Retail" className={cn(fieldClass(false), "pl-9")} />
+                      </div>
                     </div>
+                    <div>
+                      <label htmlFor="signup-owner" className="mb-1.5 block text-sm font-medium">Owner name</label>
+                      <div className="relative">
+                        <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                        <input id="signup-owner" value={form.ownerName} onChange={(e) => patch({ ownerName: e.target.value })} placeholder="Your name" className={cn(fieldClass(false), "pl-9")} />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="signup-phone" className="mb-1.5 block text-sm font-medium">Phone <span className="text-rose-500">*</span></label>
+                      <div className="relative">
+                        <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                        <input id="signup-phone" type="tel" required value={form.phone} onChange={(e) => patch({ phone: e.target.value })} placeholder="+1 555 000 0000" className={cn(fieldClass(false), "pl-9")} />
+                      </div>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label htmlFor="signup-email" className="mb-1.5 block text-sm font-medium">Email (login) <span className="text-rose-500">*</span></label>
+                      <div className="relative">
+                        <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                        <input id="signup-email" type="email" required value={form.email} onChange={(e) => patch({ email: e.target.value })} placeholder="you@business.com" autoComplete="off" className={cn(fieldClass(false), "pl-9")} />
+                      </div>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label htmlFor="signup-location" className="mb-1.5 block text-sm font-medium">Location <span className="text-rose-500">*</span></label>
+                      <div className="relative">
+                        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                        <input id="signup-location" required value={form.location} onChange={(e) => patch({ location: e.target.value })} placeholder="City, Country" className={cn(fieldClass(false), "pl-9")} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 block text-sm font-medium">Business type <span className="text-rose-500">*</span></p>
+                    <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Business type">
+                      {INDUSTRIES.map((industry) => {
+                        const selected = form.industry === industry.key;
+                        return (
+                          <button
+                            key={industry.key}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            onClick={() => patch({ industry: industry.key })}
+                            className={cn(
+                              "focus-ring flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                              selected ? "border-accent-line bg-accent-soft text-foreground" : "border-line bg-surface-2 text-muted hover:border-line-strong",
+                            )}
+                          >
+                            <span>{industry.label}</span>
+                            {selected ? <Check className="h-4 w-4 text-accent" aria-hidden /> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 block text-sm font-medium">Package</p>
+                    <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Package">
+                      {PACKAGES.map((pkg) => {
+                        const selected = form.package === pkg.key;
+                        return (
+                          <button
+                            key={pkg.key}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            onClick={() => patch({ package: pkg.key })}
+                            className={cn(
+                              "focus-ring rounded-lg border px-3 py-2 text-left transition-colors",
+                              selected ? "border-accent-line bg-accent-soft" : "border-line bg-surface-2 hover:border-line-strong",
+                            )}
+                          >
+                            <span className="block text-sm font-semibold">{pkg.label}</span>
+                            <span className="block text-xs text-muted">{pkg.price}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted">7-day free trial includes full access to every feature. Choose a package to continue after the trial.</p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="signup-password" className="mb-1.5 block text-sm font-medium">Password <span className="text-rose-500">*</span></label>
+                      <div className="relative">
+                        <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                        <input id="signup-password" type="password" required value={form.password} onChange={(e) => patch({ password: e.target.value })} placeholder="10+ chars, A-z + 0-9" autoComplete="new-password" className={cn(fieldClass(false), "pl-9")} />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="signup-confirm" className="mb-1.5 block text-sm font-medium">Confirm password <span className="text-rose-500">*</span></label>
+                      <div className="relative">
+                        <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                        <input id="signup-confirm" type="password" required value={form.confirm} onChange={(e) => patch({ confirm: e.target.value })} placeholder="Repeat password" autoComplete="new-password" className={cn(fieldClass(false), "pl-9")} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-60"
+                  >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                    {loading ? "Sending verification code…" : "Continue & send verification code"}
+                    {!loading ? <ArrowRight className="h-4 w-4" aria-hidden /> : null}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={verifyOtp} className="mt-5 space-y-4">
+                  <div className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-muted">
+                    A 6-digit verification code was sent to <span className="font-medium text-foreground">{form.email}</span>.
                   </div>
                   <div>
-                    <label htmlFor="signup-owner" className="mb-1.5 block text-sm font-medium">Owner name</label>
+                    <label htmlFor="signup-otp" className="mb-1.5 block text-sm font-medium text-foreground">Verification code</label>
                     <div className="relative">
-                      <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-                      <input id="signup-owner" value={form.ownerName} onChange={(e) => patch({ ownerName: e.target.value })} placeholder="Your name" className={cn(fieldClass(false), "pl-9")} />
+                      <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                      <input id="signup-otp" inputMode="numeric" pattern="\d{6}" maxLength={6} required value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} className="focus-ring h-11 w-full rounded-lg border border-line bg-surface-2 pl-9 pr-3 text-sm tracking-[0.3em] text-foreground placeholder:tracking-normal placeholder:text-muted" placeholder="6-digit code" />
                     </div>
                   </div>
-                  <div>
-                    <label htmlFor="signup-phone" className="mb-1.5 block text-sm font-medium">Phone <span className="text-rose-500">*</span></label>
-                    <div className="relative">
-                      <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-                      <input id="signup-phone" type="tel" required value={form.phone} onChange={(e) => patch({ phone: e.target.value })} placeholder="+92 300 1234567" className={cn(fieldClass(false), "pl-9")} />
-                    </div>
+                  <button type="submit" disabled={loading || code.length !== 6} className="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-60">
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                    {loading ? "Creating your account…" : "Verify & start free trial"}
+                  </button>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <button type="button" onClick={() => { setStep("form"); setCode(""); setError(""); setInfo(""); }} className="font-medium text-muted hover:text-foreground">Back</button>
+                    <button type="button" onClick={sendOtp as any} disabled={loading} className="font-medium text-accent hover:underline disabled:opacity-50">Resend code</button>
                   </div>
-                  <div className="sm:col-span-2">
-                    <label htmlFor="signup-email" className="mb-1.5 block text-sm font-medium">Email (login) <span className="text-rose-500">*</span></label>
-                    <div className="relative">
-                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-                      <input id="signup-email" type="email" required value={form.email} onChange={(e) => patch({ email: e.target.value })} placeholder="you@shop.com" autoComplete="off" className={cn(fieldClass(false), "pl-9")} />
-                    </div>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label htmlFor="signup-location" className="mb-1.5 block text-sm font-medium">Location <span className="text-rose-500">*</span></label>
-                    <div className="relative">
-                      <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-                      <input id="signup-location" required value={form.location} onChange={(e) => patch({ location: e.target.value })} placeholder="City, Pakistan" className={cn(fieldClass(false), "pl-9")} />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-1.5 block text-sm font-medium">Business category <span className="text-rose-500">*</span></p>
-                  <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Business category">
-                    {ALLOWED_INDUSTRIES.map((key) => {
-                      const industry = INDUSTRIES.find((item) => item.key === key);
-                      const selected = form.industry === key;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          role="radio"
-                          aria-checked={selected}
-                          onClick={() => patch({ industry: key })}
-                          className={cn(
-                            "focus-ring flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors",
-                            selected ? "border-accent-line bg-accent-soft text-foreground" : "border-line bg-surface-2 text-muted hover:border-line-strong",
-                          )}
-                        >
-                          <span>{INDUSTRY_LABEL[key] ?? industry?.label ?? key}</span>
-                          {selected ? <Check className="h-4 w-4 text-accent" aria-hidden /> : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-1.5 block text-sm font-medium">Package</p>
-                  <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Package">
-                    {PACKAGES.map((pkg) => {
-                      const selected = form.package === pkg.key;
-                      return (
-                        <button
-                          key={pkg.key}
-                          type="button"
-                          role="radio"
-                          aria-checked={selected}
-                          onClick={() => patch({ package: pkg.key })}
-                          className={cn(
-                            "focus-ring rounded-lg border px-3 py-2 text-left transition-colors",
-                            selected ? "border-accent-line bg-accent-soft" : "border-line bg-surface-2 hover:border-line-strong",
-                          )}
-                        >
-                          <span className="block text-sm font-semibold">{pkg.label}</span>
-                          <span className="block text-xs text-muted">{pkg.price}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-1.5 text-xs text-muted">Trial starts on the Growth feature set. You can change the package after the trial.</p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="signup-password" className="mb-1.5 block text-sm font-medium">Password <span className="text-rose-500">*</span></label>
-                    <div className="relative">
-                      <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-                      <input id="signup-password" type="password" required value={form.password} onChange={(e) => patch({ password: e.target.value })} placeholder="10+ chars, A-z + 0-9" autoComplete="new-password" className={cn(fieldClass(false), "pl-9")} />
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="signup-confirm" className="mb-1.5 block text-sm font-medium">Confirm password <span className="text-rose-500">*</span></label>
-                    <div className="relative">
-                      <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-                      <input id="signup-confirm" type="password" required value={form.confirm} onChange={(e) => patch({ confirm: e.target.value })} placeholder="Repeat password" autoComplete="new-password" className={cn(fieldClass(false), "pl-9")} />
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-60"
-                >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                  {loading ? "Creating your shop…" : "Create account & start trial"}
-                  {!loading ? <ArrowRight className="h-4 w-4" aria-hidden /> : null}
-                </button>
-              </form>
+                </form>
+              )}
 
               <p className="mt-4 text-center text-sm text-muted">
                 Already have an account?{" "}

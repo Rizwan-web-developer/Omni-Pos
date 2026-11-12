@@ -5,45 +5,46 @@ export function cn(...inputs: Array<string | false | null | undefined>): string 
   return inputs.filter(Boolean).join(" ");
 }
 
-/** Display currency: Pakistani Rupee (PKR) for the local market. */
-export const CURRENCY = "PKR";
-export const USD_TO_PKR = 278;
+/** Display currency: US Dollar (international). */
+export const CURRENCY = "USD";
 
-function groupInt(n: number): string {
-  const s = Math.round(Math.abs(n)).toString();
-  return s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+function formatUsdBase(value: number): string {
+  const safe = Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(safe);
 }
 
-function formatPkrBase(value: number): string {
-  const sign = value < 0 ? "-" : "";
-  return `${sign}Rs ${groupInt(value)}`;
-}
-
-function formatPkrCompact(value: number): string {
-  const sign = value < 0 ? "-" : "";
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000_000) return `${sign}Rs ${(abs / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
-  if (abs >= 1_000_000) return `${sign}Rs ${(abs / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (abs >= 1_000) return `${sign}Rs ${(abs / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
-  return `${sign}Rs ${Math.round(abs)}`;
+function formatUsdCompact(value: number): string {
+  const safe = Number.isFinite(value) ? value : 0;
+  const sign = safe < 0 ? "-" : "";
+  const abs = Math.abs(safe);
+  if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  return `${sign}$${abs.toFixed(abs % 1 === 0 ? 0 : 2)}`;
 }
 
 export function formatCurrency(value: number, compact = false): string {
-  return compact ? formatPkrCompact(value) : formatPkrBase(value);
+  return compact ? formatUsdCompact(value) : formatUsdBase(value);
 }
 
-/** Amount for POS carts and receipts (PKR). */
+/** Amount for POS carts and receipts (USD). */
 export function formatMoney(value: number): string {
-  return formatPkrBase(value);
+  return formatUsdBase(value);
 }
 
+/** @deprecated kept for backward compatibility; returns the same value (USD). */
 export function toPKR(usdValue: number): number {
-  return Math.round(usdValue * USD_TO_PKR);
+  return Math.round(usdValue);
 }
 
 export function formatNumber(value: number): string {
-  const sign = value < 0 ? "-" : "";
-  return `${sign}${groupInt(value)}`;
+  const n = Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
 }
 
 export function formatPercent(value: number, digits = 2): string {

@@ -153,39 +153,39 @@ export const INDUSTRY_TONES: Record<
 /*  PLANS                                                                     */
 /* -------------------------------------------------------------------------- */
 
-/** Plan pricing in PKR (local market). */
+/** Subscription plans in USD (international). */
 export const PLANS: PlanTier[] = [
   {
     key: "starter",
     name: "Starter",
-    price: 15000,
+    price: 19,
     cadence: "/mo",
-    blurb: "One storefront finding its rhythm.",
+    blurb: "For a single counter getting started.",
     outlets: "1 outlet",
     terminals: "2 terminals",
-    features: ["Core panel access", "Local support", "Email support"],
+    features: ["POS & printable invoices", "Bulk quantity stock", "Brands & categories", "1 owner login", "Email support"],
     highlighted: false,
   },
   {
     key: "pro",
-    name: "Pro",
-    price: 45000,
+    name: "Growth",
+    price: 49,
     cadence: "/mo",
-    blurb: "Multi-branch operators that need room.",
-    outlets: "5 outlets",
-    terminals: "15 terminals",
-    features: ["Business category panels", "Offline sync + audit log", "Priority support"],
+    blurb: "For busy businesses that need deeper workflows.",
+    outlets: "3 outlets",
+    terminals: "10 terminals",
+    features: ["Everything in Starter", "IMEI/Serial tracking & warranty", "Batch & expiry + barcode billing", "Supplier ledger & discounts", "Advanced analytics", "Up to 3 staff logins", "Priority support"],
     highlighted: true,
   },
   {
-    key: "enterprise",
-    name: "Enterprise",
-    price: 120000,
+    key: "marketing-agency",
+    name: "Marketing Agency",
+    price: 99,
     cadence: "/mo",
-    blurb: "Regulated, high-volume chains.",
+    blurb: "Full power for high-volume, multi-staff operations.",
     outlets: "Unlimited outlets",
     terminals: "Unlimited terminals",
-    features: ["Dedicated support", "Custom setup", "Priority incident handling"],
+    features: ["Everything in Growth", "Installment sales", "Repair & service job cards", "Offline sync", "Unlimited staff accounts & roles", "Multi-unit & measurement selling", "Dedicated support"],
     highlighted: false,
   },
 ];
@@ -199,6 +199,7 @@ export const PLAN_BADGE: Record<PlanKey, string> = {
   starter: "border-slate-400/25 bg-slate-500/10 text-slate-600 dark:text-slate-300",
   pro: "border-accent-line bg-accent-soft text-accent",
   enterprise: "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  "marketing-agency": "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300",
 };
 
 /* -------------------------------------------------------------------------- */

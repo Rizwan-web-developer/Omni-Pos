@@ -91,7 +91,7 @@ function SidebarContent({
 
   const superAdmin = admin.admins[0];
   const profileName = superAdmin.name?.trim() || "Rizwan K.";
-  const platformName = admin.platformName?.trim() || "OmniPos Hub";
+  const platformName = (admin.platformName?.trim() || "MNI POS") === "OmniPos Hub" ? "MNI POS" : (admin.platformName?.trim() || "MNI POS");
   const platformMark = platformName.slice(0, 2).toUpperCase();
 
   return (
@@ -111,7 +111,7 @@ function SidebarContent({
                 <p className="truncate text-sm font-semibold tracking-tight text-foreground">{platformName}</p>
                 <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-muted">
                   <ShieldCheck className="h-3.5 w-3.5 text-accent" aria-hidden />
-                  Enterprise HQ
+                  Admin
                 </p>
               </div>
             </div>

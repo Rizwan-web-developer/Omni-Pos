@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
 import { getTenantFlags, tenantHasFeature } from "@/lib/tenant-features";
 import { buildFeatureProductFields, serializeFeatureProductFields } from "@/lib/product-options";
+import { assertTenantWritable } from "@/lib/trial-guard";
 
 function serializeProduct(p: any) {
   return {
@@ -102,6 +103,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const access = await requireTenantAccess(params.id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertTenantWritable(params.id, { adminBypass: access.admin });
+  if (blocked) return blocked;
 
   try {
     const body = await req.json().catch(() => ({}));

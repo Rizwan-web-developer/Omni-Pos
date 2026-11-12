@@ -1,8 +1,14 @@
 import { AccountType, BusinessStatus } from "@prisma/client";
 
-export const PACKAGE_PKR = 15000;
 export const DAYS_PER_VOUCHER = 30;
 export const GRACE_DAYS = 5; // 1 voucher = 35 days; N vouchers = N*30 + 5 days
+export const TRIAL_DAYS = 7;
+
+export const PACKAGE_PRICES_USD: Record<string, number> = {
+  STARTER: 19,
+  PRO: 49,
+  MARKETING_AGENCY: 99,
+};
 
 export function paymentWindowDays(voucherCount: number): number {
   const n = Math.max(1, Math.floor(voucherCount));
@@ -18,8 +24,9 @@ export function computeValidUntil(paidAt: Date, voucherCount: number): Date {
   return addDays(paidAt, paymentWindowDays(voucherCount));
 }
 
+/** @deprecated display currency is USD now */
 export function formatPkr(amount: number): string {
-  return `PKR ${Math.round(amount).toLocaleString("en-PK")}`;
+  return `$${Math.round(amount).toLocaleString("en-US")}`;
 }
 
 type TenantExpiryFields = {
@@ -30,23 +37,28 @@ type TenantExpiryFields = {
   subscriptionPaidUntil?: Date | null;
 };
 
-export function isDemoExpired(t: TenantExpiryFields, now = new Date()): boolean {
-  if (String(t.accountType) !== "DEMO") return false;
+export function isTrialExpired(t: TenantExpiryFields, now = new Date()): boolean {
   if (!t.trialEndsAt) return false;
-  return t.trialEndsAt.getTime() <= now.getTime() && String(t.status) !== "DEACTIVE";
+  if (String(t.status) === "DEACTIVE") return false;
+  const isTrialLike = String(t.accountType) === "DEMO" || String(t.status) === "TRIAL";
+  if (!isTrialLike) return false;
+  return t.trialEndsAt.getTime() <= now.getTime();
+}
+
+export function isDemoExpired(t: TenantExpiryFields, now = new Date()): boolean {
+  return isTrialExpired(t, now);
 }
 
 export function isSubscriptionExpired(t: TenantExpiryFields, now = new Date()): boolean {
-  // Subscription paid-until governs paid/real access windows (auto-lock, data preserved)
   if (!t.subscriptionPaidUntil) return false;
   return t.subscriptionPaidUntil.getTime() <= now.getTime() && String(t.status) !== "DEACTIVE";
 }
 
 export function shouldLockTenant(t: TenantExpiryFields, now = new Date()): boolean {
-  return isDemoExpired(t, now) || isSubscriptionExpired(t, now);
+  return isTrialExpired(t, now) || isSubscriptionExpired(t, now);
 }
 
-/** Lazy enforcement: lock if demo/subscription expired. Returns true if it locked. */
+/** Lazy enforcement: lock if trial/subscription expired. Returns true if it locked. */
 export async function enforceTenantExpiry(
   prisma: { tenant: { update: (args: any) => Promise<any> } },
   t: TenantExpiryFields | null | undefined,
@@ -56,3 +68,4 @@ export async function enforceTenantExpiry(
   await prisma.tenant.update({ where: { id: t.id }, data: { status: BusinessStatus.DEACTIVE, isActive: false } }).catch(() => {});
   return true;
 }
+

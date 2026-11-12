@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
 import { getTenantFlags } from "@/lib/tenant-features";
 import { buildFeatureProductFields, serializeFeatureProductFields } from "@/lib/product-options";
+import { assertTenantWritable } from "@/lib/trial-guard";
 
 function serializeProduct(p: any) {
   return {
@@ -34,6 +35,8 @@ function parseSerials(input: unknown): string[] {
 export async function PATCH(req: Request, { params }: { params: { id: string; productId: string } }) {
   const access = await requireTenantAccess(params.id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertTenantWritable(params.id, { adminBypass: access.admin });
+  if (blocked) return blocked;
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -133,6 +136,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string; pr
 export async function DELETE(_req: Request, { params }: { params: { id: string; productId: string } }) {
   const access = await requireTenantAccess(params.id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertTenantWritable(params.id, { adminBypass: access.admin });
+  if (blocked) return blocked;
   try {
     const existing = await (prisma as any).product.findFirst({
       where: { id: params.productId, tenantId: params.id, deletedAt: null },

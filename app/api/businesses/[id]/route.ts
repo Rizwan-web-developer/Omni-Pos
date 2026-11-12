@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { normalizeEmail, requirePlatformAdmin, requireTenantAccess } from "@/lib/auth/server";
 import { fromAccountType, fromBusinessStatus, fromIndustryType, fromPlanTier, toBusinessStatus, toIndustryType, toPlanTier } from "@/lib/mappers";
 import { PLAN_BY_KEY } from "@/lib/data";
-import { computeValidUntil, PACKAGE_PKR } from "@/lib/subscription";
+import { computeValidUntil } from "@/lib/subscription";
 import { getTenantFeatureKeys, setTenantFeatures } from "@/lib/tenant-features";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
@@ -102,7 +102,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         }),
         prisma.subscriptionVoucher.upsert({
           where: { tenantId_year_month: { tenantId: params.id, year, month } },
-          create: { tenantId: params.id, year, month, label, amountPkr: PACKAGE_PKR, status: "PAID" as any, paidAt: now, validUntil, notes: "Auto-paid on Demo→Real conversion" },
+          create: { tenantId: params.id, year, month, label, amountPkr: 0, status: "PAID" as any, paidAt: now, validUntil, notes: "Auto-paid on Demo→Real conversion" },
           update: { status: "PAID" as any, paidAt: now, validUntil, notes: "Auto-paid on Demo→Real conversion" },
         }),
       ]);

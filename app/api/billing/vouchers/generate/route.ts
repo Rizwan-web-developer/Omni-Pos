@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePlatformAdmin } from "@/lib/auth/server";
-import { PACKAGE_PKR } from "@/lib/subscription";
+import { PACKAGE_PRICES_USD } from "@/lib/subscription";
 
 export async function POST(req: Request) {
   const session = await requirePlatformAdmin();
@@ -17,8 +17,10 @@ export async function POST(req: Request) {
     year = Math.min(2100, year);
     if (!tenantId) return NextResponse.json({ message: "tenantId is required." }, { status: 400 });
 
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true } });
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, subscriptionTier: true } });
     if (!tenant) return NextResponse.json({ message: "Business not found." }, { status: 404 });
+
+    const amountUsd = (PACKAGE_PRICES_USD as any)[String((tenant as any).subscriptionTier || "STARTER")] ?? PACKAGE_PRICES_USD.STARTER ?? 19;
 
     // Never generate vouchers for months that have already passed
     const startMonth = year === currentYear ? currentMonth : 1;
@@ -27,7 +29,7 @@ export async function POST(req: Request) {
       const label = `${year}-${String(month).padStart(2, "0")}`;
       await prisma.subscriptionVoucher.upsert({
         where: { tenantId_year_month: { tenantId, year, month } },
-        create: { tenantId, year, month, label, amountPkr: PACKAGE_PKR, status: "UNPAID" as any },
+        create: { tenantId, year, month, label, amountUsd, amountPkr: 0, status: "UNPAID" as any },
         update: {}, // keep existing (including PAID) untouched
       });
       ensured++;
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
       message:
         year === currentYear
           ? `Vouchers generated from ${from} onward (${ensured} month${ensured !== 1 ? "s" : ""}). Past months of ${year} are not created.`
-          : `Monthly vouchers generated for ${year} (${ensured} vouchers, PKR ${PACKAGE_PKR.toLocaleString("en-PK")} each).`,
+          : `Monthly vouchers generated for ${year} (${ensured} vouchers, $${amountUsd}/month each).`,
     });
   } catch (error) {
     console.error("Generate vouchers error:", error);

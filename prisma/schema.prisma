@@ -23,6 +23,7 @@ enum PlanTier {
   STARTER
   PRO
   ENTERPRISE
+  MARKETING_AGENCY
 }
 
 enum UserRole {
@@ -106,10 +107,12 @@ model Tenant {
   industryType     IndustryType
   subscriptionTier PlanTier       @default(STARTER)
   accountType      AccountType    @default(REAL)
+  billingMode      BillingMode    @default(INTERNATIONAL_AUTO)
   status           BusinessStatus @default(ACTIVE)
   isActive         Boolean        @default(true)
-  trialEndsAt      DateTime?      // Demo: 7 days from creation; auto-locks (data preserved)
-  convertedAt      DateTime?      // Demo -> Real conversion time
+  trialEndsAt      DateTime?      // Trial: 7 days from creation; full access, auto-locks (data preserved)
+  trialStartedAt   DateTime?
+  convertedAt      DateTime?      // Demo/Trial -> paid conversion time
   ownerName        String?
   email            String?
   phone            String?
@@ -117,8 +120,8 @@ model Tenant {
   mrr              Decimal?       @db.Decimal(12, 2)
   terminals        Int            @default(0)
   staff            Int            @default(0)
-  subscriptionPaidUntil DateTime? // When a paid voucher window expires -> auto Deactive (data preserved)
-  lastPaidAt       DateTime?      // Exact time admin marked Paid (physically collected)
+  subscriptionPaidUntil DateTime? // Paid window expiry -> auto Deactive (data preserved)
+  lastPaidAt       DateTime?      // Exact time payment was marked/confirmed
   logoDataUrl      String?        // Shop/outlet logo (managed by shop in settings)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -148,7 +151,8 @@ model SubscriptionPlan {
   id            String   @id @default(cuid())
   key           PlanTier @unique
   name          String
-  pricePkr      Int      // monthly price in PKR
+  priceUsd      Int      @default(0) // monthly price in USD
+  pricePkr      Int      @default(0) // legacy/local reference
   description   String?
   features      String[] // simple list
   isActive      Boolean  @default(true)
@@ -189,7 +193,8 @@ model BillingInvoice {
   subscriptionId String?
   subscription   BusinessSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   invoiceNumber  String               @unique
-  amountPkr      Int
+  amountUsd      Int                  @default(0)
+  amountPkr      Int                  @default(0) // legacy/local reference
   status         BillingPaymentStatus @default(PENDING)
   dueDate        DateTime
   paidAt         DateTime?
@@ -202,7 +207,7 @@ model BillingInvoice {
   @@index([dueDate])
 }
 
-// Monthly subscription voucher (PKR 15,000). Admin marks Paid at collection time -> 35 days (N vouchers = N*30+5 days); auto-lock on expiry.
+// Monthly subscription voucher. Admin marks Paid at collection time -> 35 days (N vouchers = N*30+5 days); auto-lock on expiry.
 model SubscriptionVoucher {
   id         String        @id @default(cuid())
   tenantId   String
@@ -210,9 +215,10 @@ model SubscriptionVoucher {
   year       Int
   month      Int           // 1-12
   label      String        // e.g. "2026-06"
-  amountPkr  Int           @default(15000)
+  amountUsd  Int           @default(0)
+  amountPkr  Int           @default(15000) // legacy/local reference
   status     VoucherStatus @default(UNPAID)
-  paidAt     DateTime?     // exact day & time admin marked Paid
+  paidAt     DateTime?     // exact day & time marked Paid
   validUntil DateTime?     // paidAt + (N*30 + 5) days for the payment action
   notes      String?
   createdAt  DateTime      @default(now())
@@ -283,9 +289,34 @@ model Announcement {
 // Global platform branding/settings (singleton row id="default"). Logo shown on all panels.
 model PlatformSetting {
   id                 String   @id @default("default")
-  platformName       String   @default("OmniPos Hub")
+  platformName       String   @default("MNI POS")
   platformLogoDataUrl String?
   updatedAt          DateTime @updatedAt
+}
+
+enum BillingMode {
+  LOCAL_MANUAL
+  INTERNATIONAL_AUTO
+}
+
+enum OtpPurpose {
+  SIGNUP
+  LOGIN
+}
+
+model EmailOtp {
+  id         String     @id @default(cuid())
+  email      String
+  purpose    OtpPurpose
+  codeHash   String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int        @default(0)
+  payload    Json?
+  createdAt  DateTime   @default(now())
+
+  @@index([email, purpose])
+  @@index([expiresAt])
 }
 
 model User {

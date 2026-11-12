@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword, requireTenantAccess, verifyPassword } from "@/lib/auth/server";
+import { assertTenantWritable } from "@/lib/trial-guard";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const access = await requireTenantAccess(params.id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertTenantWritable(params.id, { adminBypass: access.admin });
+  if (blocked) return blocked;
 
   // Admins use the admin reset-password flow; this endpoint is for the logged-in shop user
   if (access.admin) return NextResponse.json({ message: "Admins: use Reset Password from the admin panel for this business." }, { status: 400 });

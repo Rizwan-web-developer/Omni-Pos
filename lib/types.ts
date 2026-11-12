@@ -1,4 +1,4 @@
-/** Core domain types shared across the OmniPos Hub frontend. */
+/** Core domain types shared across the MNI POS frontend. */
 
 export type ThemeMode = "light" | "dark";
 
@@ -14,7 +14,7 @@ export type IndustryKey =
 
 export type BusinessCategoryKey = IndustryKey;
 
-export type PlanKey = "starter" | "pro" | "enterprise";
+export type PlanKey = "starter" | "pro" | "enterprise" | "marketing-agency";
 
 export type TenantStatus = "active" | "trial" | "deactive";
 export type BusinessStatus = TenantStatus;

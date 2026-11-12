@@ -4,14 +4,15 @@ import { getSession, isPlatformAdmin } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
-const DEFAULTS = { platformName: "OmniPos Hub", platformLogoDataUrl: null as string | null };
+const DEFAULTS = { platformName: "MNI POS", platformLogoDataUrl: "/logo.png" as string | null };
 
 export async function GET() {
   try {
     const row = await (prisma as any).platformSetting.findUnique({ where: { id: "default" } });
+    const name = (row?.platformName || DEFAULTS.platformName) === "OmniPos Hub" ? "MNI POS" : (row?.platformName || DEFAULTS.platformName);
     return NextResponse.json({
-      platformName: row?.platformName || DEFAULTS.platformName,
-      platformLogoDataUrl: row?.platformLogoDataUrl ?? null,
+      platformName: name,
+      platformLogoDataUrl: row?.platformLogoDataUrl ?? DEFAULTS.platformLogoDataUrl,
     });
   } catch {
     return NextResponse.json(DEFAULTS);

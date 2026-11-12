@@ -97,7 +97,7 @@ export function ShopShell({ businessId, children }: { businessId: string; childr
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   const base = `/store/${businessId}`;
-  const platformName = admin.platformName?.trim() || "OmniPos Hub";
+  const platformName = (admin.platformName?.trim() || "MNI POS") === "OmniPos Hub" ? "MNI POS" : (admin.platformName?.trim() || "MNI POS");
   const shopName = shop?.businessName || "My Shop";
   const panelLabel = INDUSTRY_LABEL[String(shop?.industryType || "")] || "Shop Panel";
 
@@ -132,7 +132,7 @@ export function ShopShell({ businessId, children }: { businessId: string; childr
               )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold tracking-tight text-foreground">{platformName}</p>
-                <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-muted"><ShieldCheck className="h-3.5 w-3.5 text-accent" aria-hidden />Enterprise HQ</p>
+                <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-muted"><ShieldCheck className="h-3.5 w-3.5 text-accent" aria-hidden />Platform</p>
               </div>
             </div>
           ) : (

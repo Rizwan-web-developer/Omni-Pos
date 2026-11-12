@@ -15,7 +15,14 @@ export function toIndustryType(key: IndustryKey | string): IndustryType {
 }
 
 export function toPlanTier(key: PlanKey | string): PlanTier {
-  const map: Record<string, PlanTier> = { starter: PlanTier.STARTER, pro: PlanTier.PRO, enterprise: PlanTier.ENTERPRISE };
+  const map: Record<string, PlanTier> = {
+    starter: PlanTier.STARTER,
+    pro: PlanTier.PRO,
+    enterprise: PlanTier.ENTERPRISE,
+    "marketing-agency": PlanTier.MARKETING_AGENCY,
+    marketing: PlanTier.MARKETING_AGENCY,
+    marketing_agency: PlanTier.MARKETING_AGENCY,
+  };
   return map[key] ?? PlanTier.STARTER;
 }
 
@@ -51,7 +58,12 @@ export function fromIndustryType(t: IndustryType | string): IndustryKey {
 }
 
 export function fromPlanTier(t: PlanTier | string): PlanKey {
-  const map: Record<string, PlanKey> = { STARTER: "starter", PRO: "pro", ENTERPRISE: "enterprise" };
+  const map: Record<string, PlanKey> = {
+    STARTER: "starter",
+    PRO: "pro",
+    ENTERPRISE: "enterprise",
+    MARKETING_AGENCY: "marketing-agency",
+  };
   return map[t] ?? "starter";
 }
 

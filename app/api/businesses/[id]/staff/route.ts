@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword, isPlatformAdmin, normalizeEmail, requireTenantAccess, validatePassword } from "@/lib/auth/server";
 import { tenantHasFeature } from "@/lib/tenant-features";
+import { assertTenantWritable } from "@/lib/trial-guard";
 
 const STAFF_ROLES = new Set(["MANAGER", "CASHIER"]);
 
@@ -10,10 +11,12 @@ function serializeStaff(user: any) {
   return { id: user.id, name: user.name, email: user.email, role: user.role, isActive: user.isActive, lastLoginAt: user.lastLoginAt, createdAt: user.createdAt };
 }
 
-async function guard(id: string, sessionRole: string) {
+async function guard(id: string, sessionRole: string, adminBypass = false) {
   if (!isPlatformAdmin(sessionRole) && sessionRole !== "OWNER") {
     return NextResponse.json({ message: "Only the shop owner can manage staff accounts." }, { status: 403 });
   }
+  const blocked = await assertTenantWritable(id, { adminBypass });
+  if (blocked) return blocked;
   if (!(await tenantHasFeature(id, "MULTI_USER"))) {
     return NextResponse.json({ message: "Staff accounts are not enabled for this business." }, { status: 403 });
   }
@@ -23,7 +26,7 @@ async function guard(id: string, sessionRole: string) {
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const access = await requireTenantAccess(params.id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const blocked = await guard(params.id, access.session.role);
+  const blocked = await guard(params.id, access.session.role, access.admin);
   if (blocked) return blocked;
 
   const staff = await prisma.user.findMany({
@@ -37,7 +40,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const access = await requireTenantAccess(params.id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const blocked = await guard(params.id, access.session.role);
+  const blocked = await guard(params.id, access.session.role, access.admin);
   if (blocked) return blocked;
 
   try {

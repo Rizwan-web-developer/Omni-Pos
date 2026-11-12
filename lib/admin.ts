@@ -18,8 +18,8 @@ export interface AdminSettings {
 const STORAGE_KEY = "omnipos-admin-settings";
 
 export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
-  platformName: "OmniPos Hub",
-  platformLogoDataUrl: undefined,
+  platformName: "MNI POS",
+  platformLogoDataUrl: "/logo.png",
   admins: [
     { id: "super", role: "super_admin", roleLabel: "Super Admin", name: "Rizwan K.", active: true },
     { id: "sub", role: "sub_admin", roleLabel: "Sub Admin", name: "", active: false },
@@ -33,9 +33,13 @@ export function loadAdminSettings(): AdminSettings {
     if (!raw) return DEFAULT_ADMIN_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<AdminSettings>;
     if (!parsed || !Array.isArray(parsed.admins)) return DEFAULT_ADMIN_SETTINGS;
+    const name = typeof parsed.platformName === "string" && parsed.platformName.trim() ? parsed.platformName.trim() : DEFAULT_ADMIN_SETTINGS.platformName;
     return {
-      platformName: typeof parsed.platformName === "string" && parsed.platformName.trim() ? parsed.platformName : DEFAULT_ADMIN_SETTINGS.platformName,
-      platformLogoDataUrl: typeof parsed.platformLogoDataUrl === "string" && parsed.platformLogoDataUrl ? parsed.platformLogoDataUrl : undefined,
+      platformName: name === "OmniPos Hub" ? "MNI POS" : name,
+      platformLogoDataUrl:
+        typeof parsed.platformLogoDataUrl === "string" && parsed.platformLogoDataUrl
+          ? parsed.platformLogoDataUrl
+          : DEFAULT_ADMIN_SETTINGS.platformLogoDataUrl,
       admins: [
         { ...DEFAULT_ADMIN_SETTINGS.admins[0], ...(parsed.admins[0] ?? {}), id: "super", role: "super_admin", roleLabel: "Super Admin", active: true },
         { ...DEFAULT_ADMIN_SETTINGS.admins[1], ...(parsed.admins[1] ?? {}), id: "sub", role: "sub_admin", roleLabel: "Sub Admin", active: Boolean(parsed.admins[1]?.active) },
@@ -76,9 +80,13 @@ export async function fetchPlatformBranding(): Promise<{ platformName: string; p
     const res = await fetch("/api/platform/settings", { cache: "no-store" });
     if (!res.ok) return null;
     const data = (await res.json().catch(() => ({}))) as { platformName?: string; platformLogoDataUrl?: string | null };
+    const rawName = typeof data.platformName === "string" && data.platformName.trim() ? data.platformName.trim() : "MNI POS";
     const branding = {
-      platformName: typeof data.platformName === "string" && data.platformName.trim() ? data.platformName.trim() : "OmniPos Hub",
-      platformLogoDataUrl: typeof data.platformLogoDataUrl === "string" && data.platformLogoDataUrl ? data.platformLogoDataUrl : null,
+      platformName: rawName === "OmniPos Hub" ? "MNI POS" : rawName,
+      platformLogoDataUrl:
+        typeof data.platformLogoDataUrl === "string" && data.platformLogoDataUrl
+          ? data.platformLogoDataUrl
+          : "/logo.png",
     };
     cachePlatformBranding(branding);
     return branding;

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
 import { tenantHasFeature } from "@/lib/tenant-features";
+import { assertTenantWritable } from "@/lib/trial-guard";
 
 const STATUS_SET = new Set(["RECEIVED", "IN_PROGRESS", "READY", "DELIVERED", "CANCELLED"]);
 
@@ -13,6 +14,8 @@ function serializeJob(job: any) {
 async function guard(id: string) {
   const access = await requireTenantAccess(id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertTenantWritable(id, { adminBypass: access.admin });
+  if (blocked) return blocked;
   if (!(await tenantHasFeature(id, "SERVICE_JOBS"))) {
     return NextResponse.json({ message: "Service jobs are not enabled for this business." }, { status: 403 });
   }

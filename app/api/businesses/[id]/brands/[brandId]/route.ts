@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
+import { assertTenantWritable } from "@/lib/trial-guard";
 
 function serializeProduct(p: any) {
   return {
@@ -34,6 +35,8 @@ export async function GET(_req: Request, { params }: { params: { id: string; bra
 export async function PATCH(req: Request, { params }: { params: { id: string; brandId: string } }) {
   const access = await requireTenantAccess(params.id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertTenantWritable(params.id, { adminBypass: access.admin });
+  if (blocked) return blocked;
   try {
     const body = await req.json().catch(() => ({}));
     const name = String(body?.name ?? "").trim();
@@ -69,6 +72,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string; br
 export async function DELETE(_req: Request, { params }: { params: { id: string; brandId: string } }) {
   const access = await requireTenantAccess(params.id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertTenantWritable(params.id, { adminBypass: access.admin });
+  if (blocked) return blocked;
   try {
     const existing = await (prisma as any).brand.findFirst({ where: { id: params.brandId, tenantId: params.id }, select: { id: true } });
     if (!existing) return NextResponse.json({ message: "Brand not found." }, { status: 404 });

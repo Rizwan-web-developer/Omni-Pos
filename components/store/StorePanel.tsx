@@ -113,7 +113,7 @@ function SalesChart({ series }: { series: Array<{ label: string; revenue: number
   const orange = "rgb(var(--accent))";
   return (
     <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${w} ${h}`} className="h-[240px] w-full min-w-[560px]" role="img" aria-label="Shop sales trend (PKR)">
+      <svg viewBox={`0 0 ${w} ${h}`} className="h-[240px] w-full min-w-[560px]" role="img" aria-label="Shop sales trend">
         <defs>
           <linearGradient id="shopRevFill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={orange} stopOpacity="0.22" />
@@ -188,6 +188,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const [upgradeLocked, setUpgradeLocked] = useState(false);
 
   // Inventory: modal-driven add (hybrid tracking)
   const [addOpen, setAddOpen] = useState(false);
@@ -218,9 +219,15 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
   const [qtyPrompt, setQtyPrompt] = useState<Product | null>(null);
   const [qtyValue, setQtyValue] = useState("0");
 
-  const flash = (tone: "ok" | "err", text: string) => {
+  const flash = (tone: "ok" | "err", text: string, upgrade = false) => {
+    if (upgrade) setUpgradeLocked(true);
     setNotice({ tone, text });
-    setTimeout(() => setNotice(null), 3500);
+    setTimeout(() => setNotice(null), upgrade ? 7000 : 3500);
+  };
+  const apiMessage = (data: any, fallback: string) => {
+    const upgrade = !!(data && (data.code === "UPGRADE_REQUIRED" || data.upgrade));
+    const msg = (data && typeof data.message === "string" && data.message) || fallback;
+    return { msg, upgrade };
   };
 
   const loadAll = useCallback(async () => {
@@ -242,6 +249,11 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
       setFeatures({ ...DEFAULT_FLAGS, ...(pData?.features ?? {}) });
       setInvoices(Array.isArray(iData.invoices) ? iData.invoices : []);
       setPendingOffline(readOfflineQueue(businessId).length);
+      const biz = bData.business ?? null;
+      const expiredDemo = !!biz && String(biz.accountType) === "DEMO" && biz.trialEndsAt && new Date(biz.trialEndsAt).getTime() <= Date.now();
+      const lockedStatus = !!biz && (String(biz.status) === "DEACTIVE" || String(biz.status) === "TRIAL");
+      const locked = expiredDemo || (lockedStatus && String(biz.status) === "DEACTIVE") || (!!biz && biz.subscriptionPaidUntil && new Date(biz.subscriptionPaidUntil).getTime() <= Date.now());
+      if (locked) setUpgradeLocked(true);
     } catch {
       setError("Failed to load store data.");
     } finally {
@@ -406,7 +418,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
         body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Checkout failed");
+      if (!res.ok) { const m = apiMessage(data, "Checkout failed"); const err: any = new Error(m.msg); err.upgrade = m.upgrade; throw err; }
       const inv = data.invoice as Invoice;
       setLastInvoice(inv);
       setCart([]);
@@ -470,7 +482,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
         setRxNote("");
         flash("ok", `Saved offline (${queue.length} pending). It will sync automatically when online.`);
       } else {
-        flash("err", e instanceof Error ? e.message : "Checkout failed");
+        flash("err", e instanceof Error ? e.message : "Checkout failed", !!(e as any)?.upgrade);
       }
     } finally {
       setCheckingOut(false);
@@ -522,10 +534,10 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
         body: JSON.stringify({ adjustStock: delta }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Update failed");
+      if (!res.ok) { const m = apiMessage(data, "Update failed"); const err: any = new Error(m.msg); err.upgrade = m.upgrade; throw err; }
       setProducts((cur) => cur.map((x) => (x.id === p.id ? (data.product as Product) : x)));
     } catch (e) {
-      flash("err", e instanceof Error ? e.message : "Stock update failed");
+      flash("err", e instanceof Error ? e.message : "Stock update failed", !!(e as any)?.upgrade);
     }
   };
 
@@ -541,7 +553,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
       setProducts((cur) => cur.map((x) => (x.id === p.id ? (data.product as Product) : x)));
       flash("ok", "Product updated.");
     } catch (e) {
-      flash("err", e instanceof Error ? e.message : "Update failed");
+      flash("err", e instanceof Error ? e.message : "Update failed", !!(e as any)?.upgrade);
     }
   };
 
@@ -550,12 +562,12 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
     try {
       const res = await fetch(`/api/businesses/${businessId}/products/${p.id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Delete failed");
+      if (!res.ok) { const m = apiMessage(data, "Delete failed"); const err: any = new Error(m.msg); err.upgrade = m.upgrade; throw err; }
       setProducts((cur) => cur.filter((x) => x.id !== p.id));
       flash("ok", "Product deleted.");
       setConfirmDelete(null);
     } catch (e) {
-      flash("err", e instanceof Error ? e.message : "Delete failed");
+      flash("err", e instanceof Error ? e.message : "Delete failed", !!(e as any)?.upgrade);
     } finally {
       setDeleteBusy(false);
     }
@@ -604,6 +616,14 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
         </div>
       </header>) : null}
 
+      {upgradeLocked ? (
+        <div className="mx-auto mt-3 max-w-[1600px] px-4 sm:px-6">
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            <p className="font-semibold">Upgrade to Pro</p>
+            <p className="mt-0.5 text-xs sm:text-sm">Your 7-day free trial or subscription period has ended. Your data is preserved, but selling, adding stock, and other actions are paused until you upgrade.</p>
+          </div>
+        </div>
+      ) : null}
       {notice ? (
         <div className={cn("mx-auto mt-3 max-w-[1600px] px-4 sm:px-6")}>
           <div className={cn("rounded-lg border px-3 py-2 text-sm", notice.tone === "ok" ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300")}>{notice.text}</div>
@@ -725,13 +745,13 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                 </select>
                 {features.discounts ? (
                   <label className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-sm">
-                    <span className="text-muted">Discount (PKR)</span>
+                    <span className="text-muted">Discount</span>
                     <input type="number" min="0" step="0.01" value={discountInput} onChange={(e) => setDiscountInput(e.target.value)} placeholder="0" className="focus-ring h-7 w-28 rounded-md border border-line bg-surface px-2 text-right text-sm tabular-nums text-foreground" />
                   </label>
                 ) : null}
                 {features.installments ? (
                   <label className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-sm">
-                    <span className="text-muted">Down payment (PKR)</span>
+                    <span className="text-muted">Down payment</span>
                     <input type="number" min="0" step="0.01" value={downPaymentInput} onChange={(e) => setDownPaymentInput(e.target.value)} placeholder="0" className="focus-ring h-7 w-28 rounded-md border border-line bg-surface px-2 text-right text-sm tabular-nums text-foreground" />
                   </label>
                 ) : null}
@@ -834,7 +854,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[980px] text-left text-sm">
                   <thead><tr className="border-b border-line bg-surface-2 text-xs font-semibold uppercase tracking-[0.04em] text-muted">
-                    <th className="px-4 py-2.5">Product</th><th className="px-3 py-2.5">Tracking</th><th className="px-3 py-2.5 text-right">Price (PKR)</th><th className="px-3 py-2.5 text-right">Stock</th><th className="px-4 py-2.5 text-right">Manage</th>
+                    <th className="px-4 py-2.5">Product</th><th className="px-3 py-2.5">Tracking</th><th className="px-3 py-2.5 text-right">Price</th><th className="px-3 py-2.5 text-right">Stock</th><th className="px-4 py-2.5 text-right">Manage</th>
                   </tr></thead>
                   <tbody>
                     {products.length === 0 ? (
@@ -940,7 +960,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
             <div className="overflow-x-auto">
               <table className="w-full min-w-[700px] text-left text-sm">
                 <thead><tr className="border-b border-line bg-surface-2 text-xs font-semibold uppercase tracking-[0.04em] text-muted">
-                  <th className="px-4 py-2.5">Invoice</th><th className="px-3 py-2.5">Customer</th><th className="px-3 py-2.5">Payment</th><th className="px-3 py-2.5">Items</th><th className="px-4 py-2.5 text-right">Total (PKR)</th>
+                  <th className="px-4 py-2.5">Invoice</th><th className="px-3 py-2.5">Customer</th><th className="px-3 py-2.5">Payment</th><th className="px-3 py-2.5">Items</th><th className="px-4 py-2.5 text-right">Total</th>
                 </tr></thead>
                 <tbody>
                   {invoices.length === 0 ? (
@@ -998,7 +1018,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                 ["Products", String(products.length), "in catalog"],
                 ["Total stock units", String(products.reduce((s, p) => s + p.stockQuantity, 0)), "across products"],
                 ["Sales (invoices)", String(invoices.length), "recorded"],
-                ["Sales total", formatCurrency(invoices.reduce((s, i) => s + i.totalAmount, 0)), "PKR"],
+                ["Sales total", formatCurrency(invoices.reduce((s, i) => s + i.totalAmount, 0)), "USD"],
               ].map(([label, value, hint]) => (
                 <div key={label} className="rounded-xl border border-line bg-surface p-4">
                   <p className="text-xs font-medium text-muted">{label}</p>
@@ -1013,7 +1033,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <h2 className="text-base font-semibold text-foreground">Analytics</h2>
-                    <p className="mt-0.5 text-sm text-muted">This shop&apos;s sales trend (PKR). Select a date range.</p>
+                    <p className="mt-0.5 text-sm text-muted">This shop&apos;s sales trend. Select a date range.</p>
                   </div>
                   <div className="flex flex-wrap items-end gap-2">
                     <label className="text-xs font-medium text-muted">
@@ -1049,7 +1069,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-left text-sm">
                   <thead><tr className="border-b border-line bg-surface-2 text-xs font-semibold uppercase tracking-[0.04em] text-muted">
-                    <th className="px-4 py-2.5">Product</th><th className="px-3 py-2.5 text-right">Qty</th><th className="px-3 py-2.5 text-right">Amount (PKR)</th><th className="px-3 py-2.5">Invoice</th><th className="px-4 py-2.5">Date &amp; time</th>
+                    <th className="px-4 py-2.5">Product</th><th className="px-3 py-2.5 text-right">Qty</th><th className="px-3 py-2.5 text-right">Amount</th><th className="px-3 py-2.5">Invoice</th><th className="px-4 py-2.5">Date &amp; time</th>
                   </tr></thead>
                   <tbody>
                     {recentSold.length === 0 ? (

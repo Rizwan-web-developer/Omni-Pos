@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
 import { getTenantFlags, type TenantFlags } from "@/lib/tenant-features";
+import { assertTenantWritable } from "@/lib/trial-guard";
 
 type CartItem = { productId?: string; quantity?: number; serialItemIds?: unknown };
 
@@ -40,6 +41,8 @@ const INVOICE_INCLUDE = {
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const access = await requireTenantAccess(params.id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertTenantWritable(params.id, { adminBypass: access.admin });
+  if (blocked) return blocked;
 
   let clientRefForRetry: string | null = null;
 

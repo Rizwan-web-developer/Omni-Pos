@@ -6,12 +6,12 @@ import { Providers } from "@/components/providers/Providers";
 
 export const metadata: Metadata = {
   title: {
-    default: "OmniPos Hub — POS, Inventory & Billing for Pakistani shops",
-    template: "%s · OmniPos Hub",
+    default: "MNI POS – Smart POS & Stock Management",
+    template: "%s – MNI POS",
   },
   description:
-    "Multi-tenant POS and inventory SaaS for medical stores, mobile accessories, electronics, paint, cosmetics and hardware shops. Bulk stock, IMEI/Serial tracking, invoices and PKR packages.",
-  applicationName: "OmniPos Hub",
+    "MNI POS is a point-of-sale and stock management SaaS for businesses worldwide. Sell faster, track inventory, print invoices, and manage your team from one secure platform.",
+  applicationName: "MNI POS",
 };
 
 export const viewport: Viewport = {

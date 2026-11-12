@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
 import { tenantHasFeature } from "@/lib/tenant-features";
+import { assertTenantWritable } from "@/lib/trial-guard";
 
 function serializeSupplier(supplier: any) {
   const opening = Number(supplier.openingBalancePkr ?? 0);
@@ -22,6 +23,8 @@ function serializeSupplier(supplier: any) {
 async function guard(id: string) {
   const access = await requireTenantAccess(id);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertTenantWritable(id, { adminBypass: access.admin });
+  if (blocked) return blocked;
   if (!(await tenantHasFeature(id, "SUPPLIER_LEDGER"))) {
     return NextResponse.json({ message: "Supplier ledger is not enabled for this business." }, { status: 403 });
   }
