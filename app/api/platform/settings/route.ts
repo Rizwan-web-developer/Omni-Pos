@@ -4,7 +4,7 @@ import { getSession, isPlatformAdmin } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
-const DEFAULTS = { platformName: "MNI POS", platformLogoDataUrl: "/logo.png" as string | null };
+const DEFAULTS = { platformName: "Omni Pos", platformLogoDataUrl: "/logo.png" as string | null };
 
 export async function GET() {
   try {

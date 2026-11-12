@@ -1,4 +1,4 @@
-/** Core domain types shared across the MNI POS frontend. */
+/** Core domain types shared across the Omni Pos frontend. */
 
 export type ThemeMode = "light" | "dark";
 

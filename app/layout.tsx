@@ -6,12 +6,12 @@ import { Providers } from "@/components/providers/Providers";
 
 export const metadata: Metadata = {
   title: {
-    default: "MNI POS – Smart POS & Stock Management",
-    template: "%s – MNI POS",
+    default: "Omni Pos – Smart POS & Stock Management",
+    template: "%s – Omni Pos",
   },
   description:
-    "MNI POS is a point-of-sale and stock management SaaS for businesses worldwide. Sell faster, track inventory, print invoices, and manage your team from one secure platform.",
-  applicationName: "MNI POS",
+    "Omni Pos is a point-of-sale and stock management SaaS for businesses worldwide. Sell faster, track inventory, print invoices, and manage your team from one secure platform.",
+  applicationName: "Omni Pos",
 };
 
 export const viewport: Viewport = {

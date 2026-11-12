@@ -6,7 +6,7 @@ import { StorePanel } from "@/components/store/StorePanel";
  * MobilePOS — Hybrid POS / Billing screen for the Mobile Accessories & Gadgets module.
  *
  * This component renders the store POS experience for a business and implements the
- * "Hybrid Inventory Model" behaviors specified for MNI POS:
+ * "Hybrid Inventory Model" behaviors specified for Omni Pos:
  *
  * 1) Bulk / Non-Serialized items (QUANTITY_ONLY: cables, covers, tempered glass, etc.)
  *    - Added to cart with +1 quantity increments.

@@ -18,7 +18,7 @@ export interface AdminSettings {
 const STORAGE_KEY = "omnipos-admin-settings";
 
 export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
-  platformName: "MNI POS",
+  platformName: "Omni Pos",
   platformLogoDataUrl: "/logo.png",
   admins: [
     { id: "super", role: "super_admin", roleLabel: "Super Admin", name: "Rizwan K.", active: true },
@@ -80,7 +80,7 @@ export async function fetchPlatformBranding(): Promise<{ platformName: string; p
     const res = await fetch("/api/platform/settings", { cache: "no-store" });
     if (!res.ok) return null;
     const data = (await res.json().catch(() => ({}))) as { platformName?: string; platformLogoDataUrl?: string | null };
-    const rawName = typeof data.platformName === "string" && data.platformName.trim() ? data.platformName.trim() : "MNI POS";
+    const rawName = typeof data.platformName === "string" && data.platformName.trim() ? data.platformName.trim() : "Omni Pos";
     const branding = {
       platformName: rawName,
       platformLogoDataUrl:

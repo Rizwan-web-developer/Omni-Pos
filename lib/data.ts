@@ -158,7 +158,7 @@ export const PLANS: PlanTier[] = [
   {
     key: "starter",
     name: "Starter",
-    price: 19,
+    price: 35,
     cadence: "/mo",
     blurb: "For a single counter getting started.",
     outlets: "1 outlet",
@@ -169,7 +169,7 @@ export const PLANS: PlanTier[] = [
   {
     key: "pro",
     name: "Growth",
-    price: 49,
+    price: 65,
     cadence: "/mo",
     blurb: "For busy businesses that need deeper workflows.",
     outlets: "3 outlets",
@@ -180,7 +180,7 @@ export const PLANS: PlanTier[] = [
   {
     key: "marketing-agency",
     name: "Marketing Agency",
-    price: 99,
+    price: 95,
     cadence: "/mo",
     blurb: "Full power for high-volume, multi-staff operations.",
     outlets: "Unlimited outlets",

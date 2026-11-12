@@ -28,6 +28,7 @@ export function otpEmailHtml(code: string, purpose: "login" | "signup"): string 
       ? `Welcome to ${BRAND_NAME}. Use the code below to verify your email and activate your 7-day free trial.`
       : `Use the code below to securely sign in to ${BRAND_NAME}.`;
   const safeCode = escapeHtml(code);
+  const logoUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/logo.png`;
   return `<!doctype html>
 <html lang="en">
   <body style="margin:0;padding:0;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
@@ -36,7 +37,10 @@ export function otpEmailHtml(code: string, purpose: "login" | "signup"): string 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
           <tr>
             <td style="padding:20px 24px;background:linear-gradient(135deg,#fff7ed,#ffffff);border-bottom:1px solid #fed7aa;">
-              <div style="font-size:20px;font-weight:700;color:#ea580c;letter-spacing:0.2px;">${escapeHtml(BRAND_NAME)}</div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <img src="${logoUrl}" alt="${escapeHtml(BRAND_NAME)}" style="width:36px;height:36px;object-fit:contain;border-radius:8px;" />
+                <div style="font-size:20px;font-weight:700;color:#ea580c;letter-spacing:0.2px;">${escapeHtml(BRAND_NAME)}</div>
+              </div>
               <div style="margin-top:4px;font-size:13px;color:#475569;">POS &amp; stock management for every business</div>
             </td>
           </tr>

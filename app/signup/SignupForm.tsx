@@ -24,9 +24,9 @@ import type { IndustryKey } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const PACKAGES = [
-  { key: "starter", label: "Starter", price: "$19/mo" },
-  { key: "pro", label: "Growth", price: "$49/mo" },
-  { key: "marketing-agency", label: "Marketing Agency", price: "$99/mo" },
+  { key: "starter", label: "Starter", price: "$35/mo" },
+  { key: "pro", label: "Growth", price: "$65/mo" },
+  { key: "marketing-agency", label: "Marketing Agency", price: "$95/mo" },
 ] as const;
 
 function fieldClass(hasError: boolean): string {
@@ -56,7 +56,7 @@ export function SignupForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const [platformName, setPlatformName] = useState("MNI POS");
+  const [platformName, setPlatformName] = useState("Omni Pos");
   const [platformLogo, setPlatformLogo] = useState<string | null>("/logo.png");
 
   useEffect(() => {

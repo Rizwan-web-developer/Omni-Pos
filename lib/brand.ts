@@ -1,4 +1,4 @@
-export const BRAND_NAME = "MNI POS";
+export const BRAND_NAME = "Omni Pos";
 export const CONTACT_EMAIL = "m.rizwanoffical9@gmail.com";
 export const CONTACT_WHATSAPP = "92172598704";
 export const CONTACT_WHATSAPP_DISPLAY = "+92 172 598 704";

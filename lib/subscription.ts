@@ -5,9 +5,9 @@ export const GRACE_DAYS = 5; // 1 voucher = 35 days; N vouchers = N*30 + 5 days
 export const TRIAL_DAYS = 7;
 
 export const PACKAGE_PRICES_USD: Record<string, number> = {
-  STARTER: 19,
-  PRO: 49,
-  MARKETING_AGENCY: 99,
+  STARTER: 35,
+  PRO: 65,
+  MARKETING_AGENCY: 95,
 };
 
 export function paymentWindowDays(voucherCount: number): number {

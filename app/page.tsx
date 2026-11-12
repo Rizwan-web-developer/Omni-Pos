@@ -66,7 +66,7 @@ const PACKAGES = [
   {
     key: "starter",
     name: "Starter",
-    price: 19,
+    price: 35,
     tagline: "For a single counter getting started.",
     highlight: false,
     features: [
@@ -81,7 +81,7 @@ const PACKAGES = [
   {
     key: "pro",
     name: "Growth",
-    price: 49,
+    price: 65,
     tagline: "For busy businesses that need deeper workflows.",
     highlight: true,
     features: [
@@ -98,7 +98,7 @@ const PACKAGES = [
   {
     key: "marketing-agency",
     name: "Marketing Agency",
-    price: 99,
+    price: 95,
     tagline: "Full power for high-volume, multi-staff operations.",
     highlight: false,
     features: [

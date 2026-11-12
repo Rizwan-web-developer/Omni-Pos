@@ -20,7 +20,7 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const [platformName, setPlatformName] = useState("MNI POS");
+  const [platformName, setPlatformName] = useState("Omni Pos");
   const [platformLogo, setPlatformLogo] = useState<string | null>("/logo.png");
 
   useEffect(() => {

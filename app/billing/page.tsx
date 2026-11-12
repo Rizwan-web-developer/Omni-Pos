@@ -19,7 +19,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cn, formatCurrency } from "@/lib/utils";
 
-const PACKAGE_USD = 99;
+const PACKAGE_USD = 35;
 const daysFor = (n: number) => Math.max(1, n) * 30 + 5; // 1=>35, 2=>65
 
 type Biz = {
