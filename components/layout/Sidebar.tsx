@@ -101,9 +101,9 @@ function SidebarContent({
           {!isCollapsed ? (
             <div className="flex min-w-0 items-center gap-2.5">
               {admin.platformLogoDataUrl ? (
-                <img src={admin.platformLogoDataUrl} alt="" className="h-9 w-9 shrink-0 object-contain" />
+                <img src={admin.platformLogoDataUrl} alt="" className="h-12 w-12 shrink-0 object-contain" />
               ) : (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center text-accent" aria-hidden>
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center text-accent" aria-hidden>
                   <ShieldCheck className="h-6 w-6" />
                 </span>
               )}
@@ -117,9 +117,9 @@ function SidebarContent({
             </div>
           ) : (
             admin.platformLogoDataUrl ? (
-              <img src={admin.platformLogoDataUrl} alt={platformName} className="h-9 w-9 object-contain" title={platformName} />
+              <img src={admin.platformLogoDataUrl} alt={platformName} className="h-12 w-12 object-contain" title={platformName} />
             ) : (
-              <span className="flex h-9 w-9 items-center justify-center text-accent" title={platformName}>
+              <span className="flex h-12 w-12 items-center justify-center text-accent" title={platformName}>
                 <ShieldCheck className="h-6 w-6" aria-hidden />
               </span>
             )

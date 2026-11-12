@@ -91,7 +91,7 @@ export function LoginForm() {
     <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-panel sm:p-8">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-line bg-white p-1">
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-line bg-white p-1">
             {platformLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={platformLogo} alt="" className="h-full w-full object-contain" />

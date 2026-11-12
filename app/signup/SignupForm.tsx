@@ -145,12 +145,12 @@ export function SignupForm() {
         <aside className="hidden lg:flex lg:flex-col lg:justify-between lg:rounded-2xl lg:border lg:border-line lg:bg-surface lg:p-7">
           <div>
             <Link href="/" className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-line bg-white p-0.5">
+              <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border border-line bg-white p-0.5">
                 {platformLogo ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={platformLogo} alt="" className="h-full w-full object-contain" />
                 ) : (
-                  <Store className="h-5 w-5 text-accent" aria-hidden />
+                  <Store className="h-6 w-6 text-accent" aria-hidden />
                 )}
               </span>
               <span className="text-base font-semibold tracking-tight">{platformName}</span>

@@ -138,10 +138,10 @@ export default async function LandingPage() {
           <Link href="/" className="flex items-center gap-2.5">
             {platformLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={platformLogo} alt={platformName} className="h-9 w-9 rounded-lg border border-line bg-white object-contain p-0.5" />
+              <img src={platformLogo} alt={platformName} className="h-12 w-12 rounded-lg border border-line bg-white object-contain p-0.5" />
             ) : (
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-fg">
-                <Store className="h-5 w-5" aria-hidden />
+              <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent text-accent-fg">
+                <Store className="h-6 w-6" aria-hidden />
               </span>
             )}
             <span className="text-base font-semibold tracking-tight">{platformName}</span>
@@ -430,9 +430,9 @@ export default async function LandingPage() {
           <div className="flex items-center gap-2.5">
             {platformLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={platformLogo} alt="" className="h-8 w-8 rounded-md border border-line bg-white object-contain p-0.5" />
+              <img src={platformLogo} alt="" className="h-12 w-12 rounded-md border border-line bg-white object-contain p-0.5" />
             ) : (
-              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-accent-fg"><Store className="h-4 w-4" aria-hidden /></span>
+              <span className="flex h-12 w-12 items-center justify-center rounded-md bg-accent text-accent-fg"><Store className="h-6 w-6" aria-hidden /></span>
             )}
             <div>
               <p className="text-sm font-semibold">{platformName}</p>

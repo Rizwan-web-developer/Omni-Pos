@@ -126,9 +126,9 @@ export function ShopShell({ businessId, children }: { businessId: string; childr
           {!(collapsed && !onNavigate) ? (
             <div className="flex min-w-0 items-center gap-2.5">
               {admin.platformLogoDataUrl ? (
-                <img src={admin.platformLogoDataUrl} alt="" className="h-9 w-9 shrink-0 object-contain" />
+                <img src={admin.platformLogoDataUrl} alt="" className="h-12 w-12 shrink-0 object-contain" />
               ) : (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center text-accent" aria-hidden><ShieldCheck className="h-6 w-6" /></span>
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center text-accent" aria-hidden><ShieldCheck className="h-6 w-6" /></span>
               )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold tracking-tight text-foreground">{platformName}</p>
@@ -137,9 +137,9 @@ export function ShopShell({ businessId, children }: { businessId: string; childr
             </div>
           ) : (
             admin.platformLogoDataUrl ? (
-              <img src={admin.platformLogoDataUrl} alt={platformName} className="h-9 w-9 object-contain" title={platformName} />
+              <img src={admin.platformLogoDataUrl} alt={platformName} className="h-12 w-12 object-contain" title={platformName} />
             ) : (
-              <span className="flex h-9 w-9 items-center justify-center text-accent" title={platformName}><ShieldCheck className="h-6 w-6" aria-hidden /></span>
+              <span className="flex h-12 w-12 items-center justify-center text-accent" title={platformName}><ShieldCheck className="h-6 w-6" aria-hidden /></span>
             )
           )}
           {!onNavigate ? (
