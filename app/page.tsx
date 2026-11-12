@@ -125,7 +125,7 @@ export default async function LandingPage() {
   try {
     const row = await (prisma as any).platformSetting.findUnique({ where: { id: "default" } });
     const rawName = row?.platformName || BRAND_NAME;
-    platformName = rawName === "OmniPos Hub" ? BRAND_NAME : rawName;
+    platformName = rawName;
     platformLogo = row?.platformLogoDataUrl ?? "/logo.png";
   } catch {
     /* defaults are fine */
@@ -189,10 +189,11 @@ export default async function LandingPage() {
                   View packages
                 </a>
               </div>
-              <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
+                <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
                 <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-emerald-500" aria-hidden /> 7-day free trial with full access</span>
+                <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-emerald-500" aria-hidden /> No card required</span>
                 <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-emerald-500" aria-hidden /> Your data stays preserved</span>
-                <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-emerald-500" aria-hidden /> Support for local & international clients</span>
+                <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-emerald-500" aria-hidden /> Local & international support</span>
               </div>
             </div>
 

@@ -227,7 +227,7 @@ export function SuppliersView({ businessId }: { businessId: string }) {
                       <option value="PAYMENT">Payment (payable ↓)</option>
                     </select>
                   </label>
-                  <label className="text-xs font-medium text-muted"><span className="mb-1 block">Amount (PKR)</span>
+                  <label className="text-xs font-medium text-muted"><span className="mb-1 block">Amount ($)</span>
                     <input type="number" min="0" step="0.01" value={entryAmount} onChange={(e) => setEntryAmount(e.target.value)} className="focus-ring h-10 w-32 rounded-lg border border-line bg-surface-2 px-3 text-sm tabular-nums text-foreground" />
                   </label>
                   <label className="min-w-[180px] flex-1 text-xs font-medium text-muted"><span className="mb-1 block">Note</span>
@@ -286,7 +286,7 @@ export function SuppliersView({ businessId }: { businessId: string }) {
               <label className="text-sm"><span className="mb-1 block text-xs font-medium text-muted">Address</span>
                 <input value={address} onChange={(e) => setAddress(e.target.value)} className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground" />
               </label>
-              <label className="text-sm"><span className="mb-1 block text-xs font-medium text-muted">Opening balance payable (PKR)</span>
+              <label className="text-sm"><span className="mb-1 block text-xs font-medium text-muted">Opening balance payable ($)</span>
                 <input type="number" min="0" step="0.01" value={opening} onChange={(e) => setOpening(e.target.value)} placeholder="0" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm tabular-nums text-foreground placeholder:text-muted" />
               </label>
             </div>

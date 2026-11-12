@@ -35,7 +35,7 @@ export function loadAdminSettings(): AdminSettings {
     if (!parsed || !Array.isArray(parsed.admins)) return DEFAULT_ADMIN_SETTINGS;
     const name = typeof parsed.platformName === "string" && parsed.platformName.trim() ? parsed.platformName.trim() : DEFAULT_ADMIN_SETTINGS.platformName;
     return {
-      platformName: name === "OmniPos Hub" ? "MNI POS" : name,
+      platformName: name,
       platformLogoDataUrl:
         typeof parsed.platformLogoDataUrl === "string" && parsed.platformLogoDataUrl
           ? parsed.platformLogoDataUrl
@@ -82,7 +82,7 @@ export async function fetchPlatformBranding(): Promise<{ platformName: string; p
     const data = (await res.json().catch(() => ({}))) as { platformName?: string; platformLogoDataUrl?: string | null };
     const rawName = typeof data.platformName === "string" && data.platformName.trim() ? data.platformName.trim() : "MNI POS";
     const branding = {
-      platformName: rawName === "OmniPos Hub" ? "MNI POS" : rawName,
+      platformName: rawName,
       platformLogoDataUrl:
         typeof data.platformLogoDataUrl === "string" && data.platformLogoDataUrl
           ? data.platformLogoDataUrl

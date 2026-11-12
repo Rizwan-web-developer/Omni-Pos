@@ -247,11 +247,11 @@ export function AddProductModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Cost price (PKR)</label>
+              <label className="mb-1 block text-xs font-medium text-muted">Cost price ($)</label>
               <input type="number" min="0" step="0.01" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} placeholder="0" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground placeholder:text-muted" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Selling price (PKR) *</label>
+              <label className="mb-1 block text-xs font-medium text-muted">Selling price ($) *</label>
               <input required type="number" min="0" step="0.01" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} placeholder="0" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground placeholder:text-muted" />
             </div>
             <div className="sm:col-span-2">

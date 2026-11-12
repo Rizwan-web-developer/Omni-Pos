@@ -38,7 +38,7 @@ export interface Tenant {
   status: TenantStatus;
   /** Admin-granted optional feature keys (see lib/features.ts). */
   features?: string[];
-  /** Monthly recurring revenue in PKR. */
+  /** Monthly recurring revenue in USD. */
   mrr: number;
   terminals: number;
   staff: number;

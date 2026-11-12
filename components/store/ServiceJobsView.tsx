@@ -260,7 +260,7 @@ export function ServiceJobsView({ businessId }: { businessId: string }) {
               <label className="text-sm sm:col-span-2"><span className="mb-1 block text-xs font-medium text-muted">Issue / work required</span>
                 <textarea value={issue} onChange={(e) => setIssue(e.target.value)} rows={2} className="focus-ring w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-foreground" />
               </label>
-              <label className="text-sm"><span className="mb-1 block text-xs font-medium text-muted">Estimate (PKR)</span>
+              <label className="text-sm"><span className="mb-1 block text-xs font-medium text-muted">Estimate ($)</span>
                 <input type="number" min="0" step="0.01" value={estimate} onChange={(e) => setEstimate(e.target.value)} className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground" />
               </label>
             </div>

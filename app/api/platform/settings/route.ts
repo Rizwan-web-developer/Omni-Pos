@@ -9,7 +9,7 @@ const DEFAULTS = { platformName: "MNI POS", platformLogoDataUrl: "/logo.png" as 
 export async function GET() {
   try {
     const row = await (prisma as any).platformSetting.findUnique({ where: { id: "default" } });
-    const name = (row?.platformName || DEFAULTS.platformName) === "OmniPos Hub" ? "MNI POS" : (row?.platformName || DEFAULTS.platformName);
+    const name = row?.platformName || DEFAULTS.platformName;
     return NextResponse.json({
       platformName: name,
       platformLogoDataUrl: row?.platformLogoDataUrl ?? DEFAULTS.platformLogoDataUrl,

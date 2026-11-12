@@ -144,7 +144,7 @@ function SalesChart({ series }: { series: Array<{ label: string; revenue: number
           </g>
         ) : null}
       </svg>
-      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted"><span className="inline-flex h-2.5 w-2.5 rounded-full bg-accent" aria-hidden /> Sales (PKR)</div>
+      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted"><span className="inline-flex h-2.5 w-2.5 rounded-full bg-accent" aria-hidden /> Sales ($)</div>
     </div>
   );
 }

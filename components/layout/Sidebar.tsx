@@ -91,7 +91,7 @@ function SidebarContent({
 
   const superAdmin = admin.admins[0];
   const profileName = superAdmin.name?.trim() || "Rizwan K.";
-  const platformName = (admin.platformName?.trim() || "MNI POS") === "OmniPos Hub" ? "MNI POS" : (admin.platformName?.trim() || "MNI POS");
+  const platformName = admin.platformName?.trim() || "MNI POS";
   const platformMark = platformName.slice(0, 2).toUpperCase();
 
   return (

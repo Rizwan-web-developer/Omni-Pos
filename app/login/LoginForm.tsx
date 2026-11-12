@@ -31,7 +31,7 @@ export function LoginForm() {
         if (!res.ok) return;
         const data = (await res.json().catch(() => ({}))) as { platformName?: string; platformLogoDataUrl?: string | null };
         if (cancelled) return;
-        if (data.platformName && data.platformName !== "OmniPos Hub") setPlatformName(data.platformName);
+        if (data.platformName) setPlatformName(data.platformName);
         setPlatformLogo(data.platformLogoDataUrl ?? "/logo.png");
       } catch {
         /* keep defaults */

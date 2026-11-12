@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       days: paymentWindowDays(n),
       count: n,
       vouchers,
-      message: `Marked ${n} voucher${n > 1 ? "s" : ""} paid. Panel open for ${paymentWindowDays(n)} days (until ${validUntil.toLocaleString("en-PK")}). Auto-locks after that (data preserved).`,
+      message: `Marked ${n} voucher${n > 1 ? "s" : ""} paid. Panel open for ${paymentWindowDays(n)} days (until ${validUntil.toLocaleString("en-US")}). Auto-locks after that (data preserved).`,
     });
   } catch (error) {
     console.error("Mark paid error:", error);

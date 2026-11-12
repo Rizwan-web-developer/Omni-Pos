@@ -110,7 +110,7 @@ function RevenueLineChart({ series }: { series: Array<{ label: string; revenue: 
 
   return (
     <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${w} ${h}`} className="h-[260px] w-full min-w-[620px]" role="img" aria-label="Market-style revenue trend (PKR)">
+      <svg viewBox={`0 0 ${w} ${h}`} className="h-[260px] w-full min-w-[620px]" role="img" aria-label="Market-style revenue trend (USD)">
         <defs>
           <linearGradient id="revFillOrangeFx" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={orange} stopOpacity="0.22" />
@@ -158,7 +158,7 @@ function RevenueLineChart({ series }: { series: Array<{ label: string; revenue: 
         ) : null}
       </svg>
       <div className="mt-1 flex items-center gap-3 text-xs text-muted">
-        <span className="inline-flex items-center gap-1.5"><span className="inline-flex h-2.5 w-2.5 rounded-full bg-accent" aria-hidden /> Revenue (PKR)</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-flex h-2.5 w-2.5 rounded-full bg-accent" aria-hidden /> Revenue ($)</span>
         <span>Market-style grid · moves up/down</span>
       </div>
     </div>
@@ -209,7 +209,7 @@ export function AdminDashboard() {
       </div>
 
       <section aria-label="Key performance indicators" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Monthly recurring revenue" value={formatCurrency(GLOBAL_METRICS.mrr)} delta={`${GLOBAL_METRICS.mrrDelta}%`} badge="MRR" badgeTone="neutral" sublabel="PKR · monthly" icon={TrendingUp} bars={[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]} />
+        <KpiCard label="Monthly recurring revenue" value={formatCurrency(GLOBAL_METRICS.mrr)} delta={`${GLOBAL_METRICS.mrrDelta}%`} badge="MRR" badgeTone="neutral" sublabel="USD · monthly" icon={TrendingUp} bars={[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]} />
         <KpiCard label="Active businesses" value={String(activeBusinesses)} badge={`${GLOBAL_METRICS.outlets} outlet`} badgeTone="neutral" sublabel={`${terminals} POS terminals`} icon={Building2} bars={[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]} />
         <KpiCard label="Sync status" value={formatPercent(GLOBAL_METRICS.syncRate, 2)} delta="0%" badge="24h" badgeTone="neutral" sublabel={`${GLOBAL_METRICS.offlineQueues} queued`} icon={Wifi} bars={[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]} />
         <KpiCard label="Retention" value={formatPercent(GLOBAL_METRICS.retention, 1)} delta="0%" badge="Retention" badgeTone="neutral" sublabel={`Churn ${formatPercent(GLOBAL_METRICS.churn, 1)}`} icon={ShieldCheck} bars={[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]} />
@@ -219,7 +219,7 @@ export function AdminDashboard() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-foreground">Analytics</h2>
-            <p className="mt-0.5 text-sm text-muted">Revenue trend (PKR). Select any date range (day/month/year).</p>
+            <p className="mt-0.5 text-sm text-muted">Revenue trend ($). Select any date range (day/month/year).</p>
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <label className="text-xs font-medium text-muted">
@@ -260,7 +260,7 @@ export function AdminDashboard() {
               </div>
               <dl className="grid grid-cols-2 gap-2 rounded-lg bg-surface-2 p-3 text-sm">
                 <div><dt className="text-xs text-muted">Category panel</dt><dd className="font-medium text-foreground">{INDUSTRY_BY_KEY[business.industry].shortLabel}</dd></div>
-                <div><dt className="text-xs text-muted">MRR (PKR)</dt><dd className="font-medium tabular-nums text-foreground">{formatCurrency(business.mrr)}</dd></div>
+                <div><dt className="text-xs text-muted">MRR ($)</dt><dd className="font-medium tabular-nums text-foreground">{formatCurrency(business.mrr)}</dd></div>
                 <div><dt className="text-xs text-muted">Terminals</dt><dd className="font-medium text-foreground">{business.terminals}</dd></div>
                 <div><dt className="text-xs text-muted">Sync</dt><dd className="font-medium text-foreground">{business.lastSync}</dd></div>
               </dl>

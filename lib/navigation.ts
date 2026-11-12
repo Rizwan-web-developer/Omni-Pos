@@ -50,7 +50,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/billing",
     label: "Subscriptions & Billing",
     shortLabel: "Billing",
-    description: "Plans, subscriptions, invoices and MRR (PKR)",
+    description: "Plans, subscriptions, invoices and MRR (USD)",
     icon: CreditCard,
     section: "Main",
   },

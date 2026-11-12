@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 /**
- * OmniPos Hub design tokens.
+ * MNI POS design tokens.
  *
  * The palette is driven by CSS variables (see app/globals.css) so the same
  * utilities work across themes:

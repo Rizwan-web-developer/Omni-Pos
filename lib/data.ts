@@ -262,7 +262,7 @@ export const SEED_TENANTS: Tenant[] = [
 ];
 
 /* -------------------------------------------------------------------------- */
-/*  METRICS / ANALYTICS (PKR, local)                                          */
+/*  METRICS / ANALYTICS (USD)                                                  */
 /* -------------------------------------------------------------------------- */
 
 export const GLOBAL_METRICS = {
