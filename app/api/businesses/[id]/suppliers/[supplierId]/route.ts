@@ -4,21 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
 import { tenantHasFeature } from "@/lib/tenant-features";
 import { assertTenantWritable } from "@/lib/trial-guard";
-
-function serializeSupplier(supplier: any) {
-  const opening = Number(supplier.openingBalancePkr ?? 0);
-  const entries = (supplier.entries ?? []).map((e: any) => ({ ...e, amountPkr: Number(e.amountPkr ?? 0) }));
-  const purchases = entries.filter((e: any) => e.type === "PURCHASE").reduce((s: number, e: any) => s + e.amountPkr, 0);
-  const payments = entries.filter((e: any) => e.type === "PAYMENT").reduce((s: number, e: any) => s + e.amountPkr, 0);
-  return {
-    ...supplier,
-    openingBalancePkr: opening,
-    entries,
-    purchasesPkr: purchases,
-    paymentsPkr: payments,
-    balancePkr: Math.round((opening + purchases - payments) * 100) / 100,
-  };
-}
+import { productSalesStats, serializeSupplier } from "@/lib/suppliers";
 
 async function guard(id: string) {
   const access = await requireTenantAccess(id);
@@ -31,16 +17,26 @@ async function guard(id: string) {
   return null;
 }
 
+async function supplierWithStats(id: string, supplierId: string) {
+  const supplier: any = await (prisma as any).supplier.findFirst({
+    where: { id: supplierId, tenantId: id },
+    include: {
+      entries: { orderBy: { createdAt: "desc" } },
+      products: { where: { deletedAt: null }, orderBy: { name: "asc" } },
+    },
+  });
+  if (!supplier) return null;
+  const stats = await productSalesStats(id, (supplier.products ?? []).map((p: any) => p.id));
+  return serializeSupplier(supplier, stats);
+}
+
 export async function GET(_req: Request, { params }: { params: { id: string; supplierId: string } }) {
   const blocked = await guard(params.id);
   if (blocked) return blocked;
 
-  const supplier = await prisma.supplier.findFirst({
-    where: { id: params.supplierId, tenantId: params.id },
-    include: { entries: { orderBy: { createdAt: "desc" } } },
-  });
+  const supplier = await supplierWithStats(params.id, params.supplierId);
   if (!supplier) return NextResponse.json({ message: "Supplier not found." }, { status: 404 });
-  return NextResponse.json({ supplier: serializeSupplier(supplier) });
+  return NextResponse.json({ supplier });
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string; supplierId: string } }) {
@@ -57,17 +53,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string; su
     if (typeof body?.phone === "string") data.phone = body.phone.trim().slice(0, 40) || null;
     if (typeof body?.address === "string") data.address = body.address.trim().slice(0, 200) || null;
     if (typeof body?.notes === "string") data.notes = body.notes.trim().slice(0, 300) || null;
-    if (body?.openingBalancePkr !== undefined && Number.isFinite(Number(body.openingBalancePkr))) {
-      data.openingBalancePkr = Math.max(0, Number(body.openingBalancePkr));
-    }
+    if (body?.imageUrl === null) data.imageUrl = null;
+    else if (typeof body?.imageUrl === "string") data.imageUrl = body.imageUrl || null;
 
     if (Object.keys(data).length === 0) return NextResponse.json({ message: "No valid changes." }, { status: 400 });
-    const supplier = await prisma.supplier.update({
-      where: { id: params.supplierId },
-      data: data as any,
-      include: { entries: { orderBy: { createdAt: "desc" } } },
-    });
-    return NextResponse.json({ supplier: serializeSupplier(supplier) });
+    await prisma.supplier.update({ where: { id: params.supplierId }, data: data as any });
+
+    const supplier = await supplierWithStats(params.id, params.supplierId);
+    return NextResponse.json({ supplier });
   } catch (error) {
     console.error("Update supplier error:", error);
     return NextResponse.json({ message: "Failed to update supplier." }, { status: 500 });
@@ -81,6 +74,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string; 
   try {
     const existing = await prisma.supplier.findFirst({ where: { id: params.supplierId, tenantId: params.id }, select: { id: true } });
     if (!existing) return NextResponse.json({ message: "Supplier not found." }, { status: 404 });
+    // Products stay in inventory; their supplier link is cleared automatically
+    // (onDelete: SetNull on Product.supplierId).
     await prisma.supplier.delete({ where: { id: params.supplierId } });
     return NextResponse.json({ ok: true });
   } catch (error) {

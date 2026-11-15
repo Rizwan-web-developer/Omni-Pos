@@ -4,24 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireTenantAccess } from "@/lib/auth/server";
 import { tenantHasFeature } from "@/lib/tenant-features";
 import { assertTenantWritable } from "@/lib/trial-guard";
-
-function serializeSupplier(supplier: any) {
-  const opening = Number(supplier.openingBalancePkr ?? 0);
-  const entries = (supplier.entries ?? []).map((e: any) => ({
-    ...e,
-    amountPkr: Number(e.amountPkr ?? 0),
-  }));
-  const purchases = entries.filter((e: any) => e.type === "PURCHASE").reduce((s: number, e: any) => s + e.amountPkr, 0);
-  const payments = entries.filter((e: any) => e.type === "PAYMENT").reduce((s: number, e: any) => s + e.amountPkr, 0);
-  return {
-    ...supplier,
-    openingBalancePkr: opening,
-    entries,
-    purchasesPkr: purchases,
-    paymentsPkr: payments,
-    balancePkr: Math.round((opening + purchases - payments) * 100) / 100,
-  };
-}
+import { loadSuppliers, serializeSupplier } from "@/lib/suppliers";
 
 async function guard(id: string) {
   const access = await requireTenantAccess(id);
@@ -38,12 +21,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const blocked = await guard(params.id);
   if (blocked) return blocked;
 
-  const suppliers = await prisma.supplier.findMany({
-    where: { tenantId: params.id },
-    orderBy: { name: "asc" },
-    include: { entries: { orderBy: { createdAt: "desc" }, take: 100 } },
-  });
-  return NextResponse.json({ suppliers: suppliers.map(serializeSupplier) });
+  const suppliers = await loadSuppliers(params.id);
+  return NextResponse.json({ suppliers });
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -65,9 +44,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         phone: String(body?.phone ?? "").trim().slice(0, 40) || null,
         address: String(body?.address ?? "").trim().slice(0, 200) || null,
         notes: String(body?.notes ?? "").trim().slice(0, 300) || null,
-        openingBalancePkr: Math.max(0, Number(body?.openingBalancePkr ?? 0) || 0),
+        imageUrl: typeof body?.imageUrl === "string" && body.imageUrl ? body.imageUrl : null,
       },
-      include: { entries: true },
+      include: { entries: true, products: true },
     });
     return NextResponse.json({ supplier: serializeSupplier(supplier) }, { status: 201 });
   } catch (error) {

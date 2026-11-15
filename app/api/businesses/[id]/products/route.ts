@@ -16,6 +16,8 @@ function serializeProduct(p: any) {
     categoryId: p.categoryId ?? null,
     brand: p.brand ?? null,
     brandId: p.brandId ?? null,
+    supplierId: p.supplierId ?? null,
+    supplierName: p.supplierRef?.name ?? p.supplierName ?? null,
     imageUrl: p.imageUrl ?? null,
     trackingType: p.trackingType ?? "QUANTITY_ONLY",
     costPrice: Number(p.costPrice),
@@ -73,7 +75,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const products = await (prisma as any).product.findMany({
     where: { tenantId: params.id, deletedAt: null },
     orderBy: { updatedAt: "desc" },
-    include: { serialItems: { where: { isSold: false }, orderBy: { createdAt: "asc" } } },
+    include: {
+      serialItems: { where: { isSold: false }, orderBy: { createdAt: "asc" } },
+      supplierRef: { select: { id: true, name: true } },
+    },
   });
   return NextResponse.json({
     products: products.map((product: any) => {
@@ -133,6 +138,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       brand = b.name; // snapshot
     }
     const imageUrl = typeof body?.imageUrl === "string" && body.imageUrl ? body.imageUrl : null;
+    let supplierId: string | null = null;
+    if (typeof body?.supplierId === "string" && body.supplierId.trim()) {
+      const s = await (prisma as any).supplier.findFirst({ where: { id: body.supplierId.trim(), tenantId: params.id }, select: { id: true } });
+      if (!s) return NextResponse.json({ message: "Selected supplier not found." }, { status: 400 });
+      supplierId = s.id;
+    }
     const costPrice = Number(body?.costPrice ?? 0);
     const sellingPrice = Number(body?.sellingPrice ?? 0);
     const minStockAlert = Math.max(0, Math.floor(Number(body?.minStockAlert ?? 5)));
@@ -194,6 +205,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             categoryId,
             brand,
             brandId,
+            supplierId,
             imageUrl,
             trackingType,
             costPrice: Number.isFinite(costPrice) && costPrice >= 0 ? costPrice : 0,
@@ -214,7 +226,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         });
         return tx.product.findUnique({
           where: { id: created.id },
-          include: { serialItems: { where: { isSold: false }, orderBy: { createdAt: "asc" } } },
+          include: {
+            serialItems: { where: { isSold: false }, orderBy: { createdAt: "asc" } },
+            supplierRef: { select: { id: true, name: true } },
+          },
         });
       });
       return NextResponse.json({ product: serializeProduct(product) }, { status: 201 });
@@ -232,6 +247,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         categoryId,
         brand,
         brandId,
+        supplierId,
         imageUrl,
         trackingType: "QUANTITY_ONLY",
         costPrice: Number.isFinite(costPrice) && costPrice >= 0 ? costPrice : 0,
@@ -240,7 +256,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         minStockAlert,
         ...featureFields.data,
       },
-      include: { serialItems: { where: { isSold: false } } },
+      include: {
+        serialItems: { where: { isSold: false } },
+        supplierRef: { select: { id: true, name: true } },
+      },
     });
     return NextResponse.json({ product: serializeProduct(product) }, { status: 201 });
   } catch (error) {

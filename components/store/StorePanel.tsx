@@ -34,6 +34,7 @@ type SerialTag = { id: string; serialOrImei: string; isSold?: boolean; warrantyD
 type Product = {
   id: string; name: string; sku?: string | null; barcode?: string | null; category?: string | null; categoryId?: string | null;
   brand?: string | null; brandId?: string | null; imageUrl?: string | null;
+  supplierId?: string | null; supplierName?: string | null;
   trackingType?: "QUANTITY_ONLY" | "SERIAL_OR_IMEI"; costPrice: number; sellingPrice: number;
   stockQuantity: number; minStockAlert: number; isActive?: boolean; serialItems?: SerialTag[];
   batchNumber?: string | null; expiryDate?: string | null; prescriptionRequired?: boolean;
@@ -269,7 +270,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
     const active = products.filter((p) => p.isActive !== false);
     if (!t) return active;
     return active.filter((p) => {
-      const base = [p.name, p.sku, p.barcode, p.category, p.brand].some((v) => (v || "").toLowerCase().includes(t));
+      const base = [p.name, p.sku, p.barcode, p.category, p.brand, p.supplierName].some((v) => (v || "").toLowerCase().includes(t));
       if (base) return true;
       return (p.serialItems || []).some((s) => s.serialOrImei.toLowerCase().includes(t));
     });
@@ -878,6 +879,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                                 <p className="text-xs text-muted">{[p.brand, p.category].filter(Boolean).join(" · ") || p.sku || "—"}</p>
                                 <div className="mt-1 flex flex-wrap items-center gap-1">
                                   {p.serviceItem ? <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold text-accent">SERVICE</span> : null}
+                                  {p.supplierName ? <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">Supplier: {p.supplierName}</span> : null}
                                   {features.batchExpiry && p.batchNumber ? <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-muted">Batch {p.batchNumber}</span> : null}
                                   {features.batchExpiry && p.expiryDate ? (
                                     <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", new Date(p.expiryDate).getTime() < Date.now() ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-amber-500/10 text-amber-700 dark:text-amber-300")}>

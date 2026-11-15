@@ -31,6 +31,7 @@ export type ProductFeatureFlags = {
   installments?: boolean;
   multiUnit?: boolean;
   serviceJobs?: boolean;
+  supplierLedger?: boolean;
 };
 
 const UNIT_OPTIONS = ["piece", "pack", "box", "dozen", "kg", "gram", "litre", "ml", "foot", "meter", "bundle"] as const;
@@ -82,6 +83,9 @@ export function AddProductModal({
   const [brandId, setBrandId] = useState("");
   const [brands, setBrands] = useState<Array<{ id: string; name: string }>>([]);
   const [brandsLoading, setBrandsLoading] = useState(false);
+  const [supplierId, setSupplierId] = useState("");
+  const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
   const [costPrice, setCostPrice] = useState("");
   const [sellingPrice, setSellingPrice] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -117,31 +121,35 @@ export function AddProductModal({
     let cancelled = false;
     setBrandsLoading(true);
     setCategoriesLoading(true);
+    setSuppliersLoading(true);
     (async () => {
       try {
-        const [bRes, cRes] = await Promise.all([
+        const [bRes, cRes, sRes] = await Promise.all([
           fetch(`/api/businesses/${businessId}/brands`, { cache: "no-store" }),
           fetch(`/api/businesses/${businessId}/categories`, { cache: "no-store" }),
+          features.supplierLedger ? fetch(`/api/businesses/${businessId}/suppliers`, { cache: "no-store" }) : Promise.resolve(null),
         ]);
         const bData = await bRes.json().catch(() => ({}));
         const cData = await cRes.json().catch(() => ({}));
+        const sData = sRes ? await sRes.json().catch(() => ({})) : {};
         if (!cancelled) {
           if (bRes.ok) setBrands(Array.isArray(bData.brands) ? bData.brands.map((b: any) => ({ id: b.id, name: b.name })) : []);
           if (cRes.ok) setCategories(Array.isArray(cData.categories) ? cData.categories.map((c: any) => ({ id: c.id, name: c.name })) : []);
+          if (sRes && sRes.ok) setSuppliers(Array.isArray(sData.suppliers) ? sData.suppliers.map((s: any) => ({ id: s.id, name: s.name })) : []);
         }
       } finally {
-        if (!cancelled) { setBrandsLoading(false); setCategoriesLoading(false); }
+        if (!cancelled) { setBrandsLoading(false); setCategoriesLoading(false); setSuppliersLoading(false); }
       }
     })();
     return () => { cancelled = true; };
-  }, [open, businessId]);
+  }, [open, businessId, features.supplierLedger]);
 
   if (!open) return null;
 
   const reset = () => {
     setName(""); setCategoryId(""); setBrandId(""); setCostPrice(""); setSellingPrice("");
     setImageUrl(null); setTrackingType("QUANTITY_ONLY"); setStockQuantity("0");
-    setSerialText(""); setWarrantyDays("0"); setError("");
+    setSerialText(""); setWarrantyDays("0"); setError(""); setSupplierId("");
     setBarcode(""); setBatchNumber(""); setExpiryDate(""); setPrescriptionRequired(false);
     setShadeCode(""); setPaintBase(""); setPackSize(""); setUnitLabel("");
     setInstallmentAvailable(false); setServiceItem(false);
@@ -172,6 +180,7 @@ export function AddProductModal({
         name: name.trim(),
         categoryId: categoryId || null,
         brandId: brandId || null,
+        supplierId: supplierId || null,
         barcode: barcode.trim() || null,
         costPrice: Number(costPrice || 0),
         sellingPrice: sp,
@@ -246,6 +255,15 @@ export function AddProductModal({
                 {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
+            {features.supplierLedger ? (
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-muted">Supplier (who supplies this product)</label>
+                <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground" disabled={suppliersLoading}>
+                  <option value="">{suppliersLoading ? "Loading suppliers…" : suppliers.length === 0 ? "No suppliers yet — add one on the Suppliers page" : "No supplier"}</option>
+                  {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            ) : null}
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">Cost price ($)</label>
               <input type="number" min="0" step="0.01" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} placeholder="0" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground placeholder:text-muted" />
@@ -283,7 +301,7 @@ export function AddProductModal({
               <div className="inline-flex rounded-lg border border-line bg-surface-2 p-0.5" role="group" aria-label="Tracking type">
                 {([
                   { k: "QUANTITY_ONLY" as const, l: "Quantity only" },
-                  { k: "SERIAL_OR_IMEI" as const, l: "Serial ya IMEI" },
+                  { k: "SERIAL_OR_IMEI" as const, l: "Serial / IMEI" },
                 ]).map(({ k, l }) => (
                   <button key={k} type="button" onClick={() => setTrackingType(k)}
                     className={cn("focus-ring rounded-md px-3 py-1.5 text-sm font-medium transition-colors", trackingType === k ? "bg-accent-soft text-accent" : "text-muted hover:text-foreground")}
@@ -305,7 +323,7 @@ export function AddProductModal({
             </div>
           ) : (
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted">IMEI ya Serial number</label>
+              <label className="mb-1 block text-xs font-medium text-muted">Serial / IMEI numbers</label>
               <textarea
                 value={serialText}
                 onChange={(e) => setSerialText(e.target.value)}

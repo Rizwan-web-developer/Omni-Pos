@@ -355,6 +355,8 @@ model Product {
   brand          String?      // snapshot name (kept for compatibility/display)
   brandId        String?
   brandRef       Brand?       @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  supplierId     String?
+  supplierRef    Supplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   imageUrl       String?
   trackingType   TrackingType @default(QUANTITY_ONLY)
   costPrice      Decimal      @db.Decimal(10, 2)
@@ -385,6 +387,7 @@ model Product {
   @@index([tenantId])
   @@index([brandId])
   @@index([categoryId])
+  @@index([supplierId])
   @@index([barcode])
   @@index([name, category])
 }
@@ -556,12 +559,14 @@ model Supplier {
   name              String
   phone             String?
   address           String?
+  imageUrl          String?         // supplier photo
   openingBalancePkr Decimal         @default(0) @db.Decimal(10, 2)
   notes             String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
   entries           SupplierEntry[]
+  products          Product[]
 
   @@index([tenantId])
   @@index([name])
@@ -574,6 +579,12 @@ model SupplierEntry {
   supplier    Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   type        SupplierEntryType @default(PURCHASE)
   amountPkr   Decimal           @db.Decimal(10, 2)
+  // Bill details (purchases only)
+  productId   String?
+  productName String?
+  quantity    Int?
+  unitCost    Decimal?          @db.Decimal(10, 2)
+  paidAmount  Decimal           @default(0) @db.Decimal(10, 2) // paid at bill time
   note        String?
   createdAt   DateTime          @default(now())
 
