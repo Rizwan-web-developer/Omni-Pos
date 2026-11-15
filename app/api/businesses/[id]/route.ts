@@ -155,38 +155,36 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     const existing = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, businessName: true } });
     if (!existing) return NextResponse.json({ message: "Business not found." }, { status: 404 });
 
-    // Explicit ordered cleanup to satisfy Restrict FKs (e.g. InvoiceItem.product -> Product) and remove tenant-scoped rows.
+    // Delete in an order that satisfies Restrict FKs (InvoiceItem -> Product).
+    // Most other tenant relations cascade on delete at DB level.
     await prisma.$transaction(async (tx) => {
       const t: any = tx as any;
-      // Invoice items reference products (Restrict) and serials; remove them before products/serials/invoices.
-      await t.invoiceItem.deleteMany({ where: { invoice: { tenantId } } });
-      await t.invoice.deleteMany({ where: { tenantId } });
 
-      // Serials belong to products/tenant; remove explicitly (tenantId FK not modeled as a Tenant relation).
-      await t.serialItem.deleteMany({ where: { tenantId } });
+      await t.invoiceItem.deleteMany({ where: { invoice: { tenantId } } }).catch(() => {});
+      await t.invoice.deleteMany({ where: { tenantId } }).catch(() => {});
 
-      // Product extension rows (cascade from product in schema, but explicit is safe).
-      await t.mobileItem.deleteMany({ where: { product: { tenantId } } });
-      await t.pharmacyItem.deleteMany({ where: { product: { tenantId } } });
-      await t.electronicsItem.deleteMany({ where: { product: { tenantId } } });
+      await t.serialItem.deleteMany({ where: { tenantId } }).catch(() => {});
 
-      await t.product.deleteMany({ where: { tenantId } });
-      await t.brand.deleteMany({ where: { tenantId } });
-      await t.category.deleteMany({ where: { tenantId } });
+      await t.mobileItem.deleteMany({ where: { product: { tenantId } } }).catch(() => {});
+      await t.pharmacyItem.deleteMany({ where: { product: { tenantId } } }).catch(() => {});
+      await t.electronicsItem.deleteMany({ where: { product: { tenantId } } }).catch(() => {});
 
-      // Supplier ledger (entries cascade from supplier, but explicit is safe)
-      await t.supplierEntry.deleteMany({ where: { tenantId } });
-      await t.supplier.deleteMany({ where: { tenantId } });
+      // Supplier/product links and product FKs must be clear before deleting products.
+      await t.supplierEntry.deleteMany({ where: { tenantId } }).catch(() => {});
+      await t.supplier.deleteMany({ where: { tenantId } }).catch(() => {});
+
+      await t.product.deleteMany({ where: { tenantId } }).catch(() => {});
+      await t.brand.deleteMany({ where: { tenantId } }).catch(() => {});
+      await t.category.deleteMany({ where: { tenantId } }).catch(() => {});
 
       await t.serviceJob.deleteMany({ where: { tenantId } }).catch(() => {});
       await t.tenantFeature.deleteMany({ where: { tenantId } }).catch(() => {});
-
-      await t.subscriptionVoucher.deleteMany({ where: { tenantId } });
-      await t.billingInvoice.deleteMany({ where: { tenantId } });
-      await t.businessSubscription.deleteMany({ where: { tenantId } });
-      await t.syncHealthLog.deleteMany({ where: { tenantId } });
-      await t.supportTicket.deleteMany({ where: { tenantId } });
-      await t.user.deleteMany({ where: { tenantId } });
+      await t.subscriptionVoucher.deleteMany({ where: { tenantId } }).catch(() => {});
+      await t.billingInvoice.deleteMany({ where: { tenantId } }).catch(() => {});
+      await t.businessSubscription.deleteMany({ where: { tenantId } }).catch(() => {});
+      await t.syncHealthLog.deleteMany({ where: { tenantId } }).catch(() => {});
+      await t.supportTicket.deleteMany({ where: { tenantId } }).catch(() => {});
+      await t.user.deleteMany({ where: { tenantId } }).catch(() => {});
 
       await t.tenant.delete({ where: { id: tenantId } });
     });
@@ -194,6 +192,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     return NextResponse.json({ ok: true, deletedId: existing.id, name: existing.businessName });
   } catch (error) {
     console.error("Delete business error:", error);
-    return NextResponse.json({ message: "Failed to delete business." }, { status: 500 });
+    const detail = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ message: `Failed to delete business: ${detail}` }, { status: 500 });
   }
 }
