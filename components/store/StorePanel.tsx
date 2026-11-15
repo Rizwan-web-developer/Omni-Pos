@@ -251,9 +251,9 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
       setPendingOffline(readOfflineQueue(businessId).length);
       const biz = bData.business ?? null;
       const expiredDemo = !!biz && String(biz.accountType) === "DEMO" && biz.trialEndsAt && new Date(biz.trialEndsAt).getTime() <= Date.now();
-      const lockedStatus = !!biz && (String(biz.status) === "DEACTIVE" || String(biz.status) === "TRIAL");
-      const locked = expiredDemo || (lockedStatus && String(biz.status) === "DEACTIVE") || (!!biz && biz.subscriptionPaidUntil && new Date(biz.subscriptionPaidUntil).getTime() <= Date.now());
-      if (locked) setUpgradeLocked(true);
+      const subExpired = !!biz && biz.subscriptionPaidUntil && new Date(biz.subscriptionPaidUntil).getTime() <= Date.now();
+      const locked = expiredDemo || subExpired || (!!biz && String(biz.status) === "DEACTIVE");
+      setUpgradeLocked(locked);
     } catch {
       setError("Failed to load store data.");
     } finally {
@@ -600,6 +600,11 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {currencyForCountry(business?.country) === "PKR" ? (
+              <Link href={`/store/${businessId}/support`} className="focus-ring inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm font-medium text-foreground">Billing / Support</Link>
+            ) : (
+              <Link href={`/store/${businessId}/upgrade`} className="focus-ring inline-flex items-center gap-1.5 rounded-lg border border-accent-line bg-accent-soft px-3 py-2 text-sm font-semibold text-accent">Subscription / Upgrade</Link>
+            )}
             <button type="button" onClick={() => void loadAll()} className="focus-ring inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm font-medium text-foreground"><RefreshCw className="h-4 w-4" /> Refresh</button>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Boxes,
+  CreditCard,
   Layers,
   LayoutDashboard,
   LifeBuoy,
@@ -40,6 +41,7 @@ const NAV = [
   { key: "brands", label: "Brands", href: "/brands", icon: Tag },
   { key: "categories", label: "Categories", href: "/categories", icon: Layers },
   { key: "sales", label: "Sales / Invoices", href: "/sales", icon: ReceiptText },
+  { key: "upgrade", label: "Subscription", href: "/upgrade", icon: CreditCard },
   { key: "support", label: "Support", href: "/support", icon: LifeBuoy },
   { key: "settings", label: "Settings", href: "/settings", icon: Settings },
 ] as const;
