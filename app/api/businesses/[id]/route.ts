@@ -174,6 +174,13 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
       await t.brand.deleteMany({ where: { tenantId } });
       await t.category.deleteMany({ where: { tenantId } });
 
+      // Supplier ledger (entries cascade from supplier, but explicit is safe)
+      await t.supplierEntry.deleteMany({ where: { tenantId } });
+      await t.supplier.deleteMany({ where: { tenantId } });
+
+      await t.serviceJob.deleteMany({ where: { tenantId } }).catch(() => {});
+      await t.tenantFeature.deleteMany({ where: { tenantId } }).catch(() => {});
+
       await t.subscriptionVoucher.deleteMany({ where: { tenantId } });
       await t.billingInvoice.deleteMany({ where: { tenantId } });
       await t.businessSubscription.deleteMany({ where: { tenantId } });
