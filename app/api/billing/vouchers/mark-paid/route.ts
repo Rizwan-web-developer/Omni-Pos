@@ -3,6 +3,7 @@ import { BusinessStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requirePlatformAdmin } from "@/lib/auth/server";
 import { computeValidUntil, paymentWindowDays } from "@/lib/subscription";
+import { isInternationalBillingCountry } from "@/lib/stripe";
 
 export async function POST(req: Request) {
   const session = await requirePlatformAdmin();
@@ -14,8 +15,12 @@ export async function POST(req: Request) {
     if (!tenantId) return NextResponse.json({ message: "tenantId is required." }, { status: 400 });
     if (voucherIds.length === 0) return NextResponse.json({ message: "Select at least one voucher to mark paid." }, { status: 400 });
 
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, accountType: true } });
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, accountType: true, country: true, billingMode: true } });
     if (!tenant) return NextResponse.json({ message: "Business not found." }, { status: 404 });
+
+    if (String((tenant as any).billingMode) === "INTERNATIONAL_AUTO" || isInternationalBillingCountry((tenant as any).country)) {
+      return NextResponse.json({ message: "This is an international account with automatic Stripe billing. Manual voucher payment is only for Pakistan/local accounts." }, { status: 400 });
+    }
 
     // Only mark UNPAID vouchers belonging to this tenant
     const targets = await prisma.subscriptionVoucher.findMany({

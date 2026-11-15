@@ -14,6 +14,7 @@ import { recommendedFeatures } from "@/lib/features";
 import { toIndustryType, toPlanTier } from "@/lib/mappers";
 import { setTenantFeatures } from "@/lib/tenant-features";
 import { slugify } from "@/lib/utils";
+import { billingModeForCountry } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
         industryType: toIndustryType(industry),
         subscriptionTier: toPlanTier(packageKey),
         accountType: AccountType.DEMO,
+        billingMode: billingModeForCountry(country) as any,
         status: BusinessStatus.TRIAL,
         isActive: true,
         trialEndsAt,

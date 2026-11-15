@@ -33,7 +33,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       select: {
         id: true, uid: true, businessName: true, status: true, accountType: true, isActive: true,
-        subscriptionPaidUntil: true, lastPaidAt: true, email: true, phone: true, subscriptionTier: true, billingMode: true,
+        subscriptionPaidUntil: true, lastPaidAt: true, email: true, phone: true, country: true, subscriptionTier: true, billingMode: true,
       },
     }),
     prisma.subscriptionVoucher.groupBy({ by: ["tenantId", "status"], _count: { _all: true } }),

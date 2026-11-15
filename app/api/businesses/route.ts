@@ -7,6 +7,7 @@ import { toAccountType, toIndustryType } from "@/lib/mappers";
 import { recommendedFeatures } from "@/lib/features";
 import { setTenantFeatures } from "@/lib/tenant-features";
 import { slugify } from "@/lib/utils";
+import { billingModeForCountry } from "@/lib/stripe";
 
 async function uniqueSlug(base: string): Promise<string> {
   const root = slugify(base) || "business";
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
     const name = String(body?.name ?? "").trim();
     const email = normalizeEmail(String(body?.email ?? ""));
     const phone = String(body?.phone ?? "").trim();
+    const country = String(body?.country ?? "").trim();
     const location = String(body?.location ?? "").trim();
     const password = String(body?.password ?? "");
     const industry = String(body?.industry ?? "");
@@ -92,12 +94,14 @@ export async function POST(req: Request) {
         industryType: toIndustryType(industry),
         subscriptionTier: "STARTER" as any,
         accountType,
+        billingMode: billingModeForCountry(country) as any,
         status,
         isActive: true,
         trialEndsAt,
         ownerName: name,
         email,
         phone: phone || null,
+        country: country || null,
         location: location || null,
         mrr: 0,
         users: {

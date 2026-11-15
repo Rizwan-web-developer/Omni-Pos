@@ -27,7 +27,7 @@ async function activateTenantFromPayment(params: {
 
   const tier = packageKey ? toPlanTier(packageKey) : (tenant.subscriptionTier as any);
   // 1 paid period = 35 days (same window rule as manual billing). Auto-renewing subscriptions
-  // will extend again on subsequent invoice payments.
+  // extend again on subsequent invoice payments (invoice.payment_succeeded).
   const validUntil = computeValidUntil(paidAt, 1);
   const year = paidAt.getFullYear();
   const month = paidAt.getMonth() + 1;
@@ -38,6 +38,7 @@ async function activateTenantFromPayment(params: {
       where: { id: tenantId },
       data: {
         subscriptionTier: tier as any,
+        billingMode: "INTERNATIONAL_AUTO" as any,
         status: "ACTIVE" as any,
         isActive: true,
         accountType: "REAL" as any,
@@ -55,21 +56,46 @@ async function activateTenantFromPayment(params: {
         month,
         label,
         amountPkr: 0,
+        amountUsd: 0,
         status: "PAID" as any,
         paidAt,
         validUntil,
-        notes: `Stripe payment${eventId ? ` (${eventId})` : ""}`,
+        notes: `Stripe automatic payment${eventId ? ` (${eventId})` : ""}`,
       },
       update: {
         status: "PAID" as any,
         paidAt,
         validUntil,
-        notes: `Stripe payment${eventId ? ` (${eventId})` : ""}`,
+        notes: `Stripe automatic payment${eventId ? ` (${eventId})` : ""}`,
       },
     }),
   ]);
 
   return { ok: true as const, validUntil };
+}
+
+async function deactivateTenantSubscription(params: { tenantId: string; eventId?: string; reason?: string }) {
+  const { tenantId, eventId, reason } = params;
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, subscriptionPaidUntil: true },
+  });
+  if (!tenant) return { ok: false as const, reason: "tenant_not_found" as const };
+
+  // End access now (data preserved). Natural expiry logic also locks, but this makes it immediate on cancel/delete.
+  await prisma.tenant.update({
+    where: { id: tenantId },
+    data: {
+      billingMode: "INTERNATIONAL_AUTO" as any,
+      status: "DEACTIVE" as any,
+      isActive: false,
+      subscriptionPaidUntil: new Date(),
+      trialEndsAt: null,
+    },
+  }).catch(() => null);
+
+  console.log("Stripe webhook: tenant subscription deactivated", { tenantId, eventId, reason });
+  return { ok: true as const };
 }
 
 export async function POST(req: Request) {
@@ -106,10 +132,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // For subscription renewals, extend access when an invoice is paid.
+    // Automatic renewals: extend access when a subscription invoice is paid.
     if (event.type === "invoice.payment_succeeded" || event.type === "invoice.paid") {
       const invoice = event.data.object as any;
-      // Avoid double-processing the very first invoice if checkout.session.completed already handled it.
       const billingReason = String(invoice.billing_reason || "");
       const isInitial = billingReason === "subscription_create";
       if (!isInitial) {
@@ -130,6 +155,23 @@ export async function POST(req: Request) {
         if (tenantId) {
           await activateTenantFromPayment({ tenantId, packageKey, paidAt: new Date(), eventId: event.id });
         }
+      }
+    }
+
+    // Automatic lifecycle: lock access when subscription is canceled/deleted (data preserved).
+    if (event.type === "customer.subscription.deleted") {
+      const sub = event.data.object as any;
+      const tenantId = String(sub.metadata?.tenantId || "").trim();
+      if (tenantId) await deactivateTenantSubscription({ tenantId, eventId: event.id, reason: "subscription_deleted" });
+    }
+
+    if (event.type === "customer.subscription.updated") {
+      const sub = event.data.object as any;
+      const status = String(sub.status || "");
+      const tenantId = String(sub.metadata?.tenantId || "").trim();
+      // If Stripe marks subscription canceled/unpaid/incomplete_expired, end access automatically.
+      if (tenantId && (status === "canceled" || status === "unpaid" || status === "incomplete_expired")) {
+        await deactivateTenantSubscription({ tenantId, eventId: event.id, reason: `subscription_${status}` });
       }
     }
 

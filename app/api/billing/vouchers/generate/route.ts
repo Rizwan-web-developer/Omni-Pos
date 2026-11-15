@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePlatformAdmin } from "@/lib/auth/server";
 import { PACKAGE_PRICES_USD } from "@/lib/subscription";
+import { isInternationalBillingCountry } from "@/lib/stripe";
 
 export async function POST(req: Request) {
   const session = await requirePlatformAdmin();
@@ -17,8 +18,11 @@ export async function POST(req: Request) {
     year = Math.min(2100, year);
     if (!tenantId) return NextResponse.json({ message: "tenantId is required." }, { status: 400 });
 
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, subscriptionTier: true } });
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, subscriptionTier: true, country: true, billingMode: true } });
     if (!tenant) return NextResponse.json({ message: "Business not found." }, { status: 404 });
+    if (String((tenant as any).billingMode) === "INTERNATIONAL_AUTO" || isInternationalBillingCountry((tenant as any).country)) {
+      return NextResponse.json({ message: "This is an international account with automatic Stripe billing. Manual vouchers are only for Pakistan/local accounts." }, { status: 400 });
+    }
 
     const amountUsd = (PACKAGE_PRICES_USD as any)[String((tenant as any).subscriptionTier || "STARTER")] ?? PACKAGE_PRICES_USD.STARTER ?? 19;
 

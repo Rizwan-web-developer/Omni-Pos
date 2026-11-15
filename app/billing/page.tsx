@@ -24,6 +24,7 @@ const daysFor = (n: number) => Math.max(1, n) * 30 + 5; // 1=>35, 2=>65
 
 type Biz = {
   id: string; uid?: string | null; businessName: string; status: string; accountType: string; isActive: boolean;
+  country?: string | null; billingMode?: string | null; subscriptionTier?: string | null; packageUsd?: number;
   subscriptionPaidUntil?: string | null; lastPaidAt?: string | null; email?: string | null; phone?: string | null;
   paid: boolean; paidWindowValid: boolean; voucherPaid: number; voucherUnpaid: number;
 };
@@ -65,6 +66,7 @@ export default function BillingPage() {
   const selected = useMemo(() => businesses.find((b) => b.id === selectedId) || null, [businesses, selectedId]);
   const pickedIds = useMemo(() => Object.keys(picked).filter((k) => picked[k]), [picked]);
   const pickedCount = pickedIds.length;
+  const selectedIsAuto = !!selected && (String(selected.billingMode) === "INTERNATIONAL_AUTO" || (String(selected.country || "").trim().toLowerCase() !== "pakistan" && String(selected.country || "").trim().toLowerCase() !== "pk"));
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -132,7 +134,10 @@ export default function BillingPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-[28px] font-semibold tracking-tight text-foreground">Subscriptions &amp; Billing</h1>
-          <p className="mt-1 text-sm text-muted">Single package <span className="font-semibold text-foreground">${PACKAGE_USD.toLocaleString("en-US")}</span> per business (full panel). Collect payment → mark Paid (exact date &amp; time) → 35 days, then auto-locked (data preserved).</p>
+          <p className="mt-1 text-sm text-muted">
+            <span className="font-semibold text-foreground">Pakistan/local:</span> manual billing in this dashboard (vouchers, mark paid).{" "}
+            <span className="font-semibold text-foreground">International (all other regions/countries):</span> automatic Stripe subscription billing — customers pay/upgrade via Stripe and the panel auto-activates/renews on payment.
+          </p>
         </div>
         <button type="button" onClick={() => void load()} className="focus-ring inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium text-foreground hover:border-line-strong">
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} aria-hidden /> Refresh
@@ -149,7 +154,7 @@ export default function BillingPage() {
       </section>
 
       <section className="rounded-xl border border-accent-line bg-accent-soft/30 p-4 text-sm text-foreground">
-        <p className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden /><span><span className="font-semibold">Rules:</span> vouchers are generated only from <b>today ({currentYear}-{String(currentMonth).padStart(2, "0")}) forward</b> (past months/years not allowed). Mark Paid attaches the exact date &amp; time, <b>1 voucher = 35 days</b>, <b>2 vouchers = 65 days</b>. On expiry, the account is <b>auto-locked (Deactive)</b> and data is preserved. Converting a Demo to Real marks it <b>paid immediately</b> (current month voucher paid, 35 days). Real + Active = paid.</span></p>
+        <p className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden /><span><span className="font-semibold">Rules:</span> <b>Pakistan</b> accounts use manual billing (vouchers, mark paid: 1 voucher = 35 days, 2 = 65 days, auto-lock on expiry, data preserved). <b>All other regions/countries</b> use automatic Stripe subscription billing — checkout, payment, activation and renewals are handled automatically by Stripe/webhook (no manual voucher marking).</span></p>
       </section>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.25fr)]">
@@ -173,7 +178,12 @@ export default function BillingPage() {
                               {b.subscriptionPaidUntil ? (expired ? `Expired ${fmtDT(b.subscriptionPaidUntil)} (auto-locked)` : `Valid until ${fmtDT(b.subscriptionPaidUntil)}`) : "No paid window set"}
                             </p>
                           </div>
-                          <span className={cn("shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium", b.paid ? "border-emerald-600/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-amber-600/20 bg-amber-500/10 text-amber-700 dark:text-amber-400")}>{b.paid ? "PAID" : "UNPAID"}</span>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <span className={cn("rounded-md border px-2 py-0.5 text-xs font-medium", b.paid ? "border-emerald-600/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-amber-600/20 bg-amber-500/10 text-amber-700 dark:text-amber-400")}>{b.paid ? "PAID" : "UNPAID"}</span>
+                            <span className={cn("rounded-md border px-2 py-0.5 text-[10px] font-medium", String(b.billingMode) === "INTERNATIONAL_AUTO" || (String(b.country||"").trim().toLowerCase() !== "pakistan" && String(b.country||"").trim().toLowerCase() !== "pk") ? "border-sky-600/20 bg-sky-500/10 text-sky-700 dark:text-sky-300" : "border-violet-600/20 bg-violet-500/10 text-violet-700 dark:text-violet-300")}>
+                              {String(b.billingMode) === "INTERNATIONAL_AUTO" || (String(b.country||"").trim().toLowerCase() !== "pakistan" && String(b.country||"").trim().toLowerCase() !== "pk") ? "AUTO (Stripe)" : "MANUAL (PK)"}
+                            </span>
+                          </div>
                         </div>
                       </button>
                     </li>
@@ -195,29 +205,40 @@ export default function BillingPage() {
                 <p className="text-xs text-muted">{selected.accountType} · {selected.status} · {selected.paid ? "Paid/Active" : "Not paid"}{selected.subscriptionPaidUntil ? ` · ${isExpired(selected.subscriptionPaidUntil) ? "expired" : "valid until"} ${fmtDT(selected.subscriptionPaidUntil)}` : ""}</p>
               </div>
 
-              <div className="flex flex-wrap items-end gap-2">
-                <label className="text-sm text-foreground"><span className="mb-1 block text-xs font-medium text-muted">Year (current or future)</span>
-                  <input type="number" min={currentYear} max={2100} value={year} onChange={(e) => setYear(clampYear(Number(e.target.value)))} className="focus-ring h-9 w-28 rounded-lg border border-line bg-surface-2 px-2 text-sm text-foreground" />
-                </label>
-                <button type="button" disabled={!!working} onClick={() => void generateYear()} className="focus-ring inline-flex h-9 items-center gap-2 rounded-lg border border-accent-line bg-accent-soft px-3 text-sm font-semibold text-accent hover:opacity-90 disabled:opacity-60">
-                  {working === "generate" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />} Generate monthly vouchers ({clampYear(year)})
-                </button>
-                <div className="relative min-w-[180px] flex-1">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-                  <input type="text" value={monthSearch} onChange={(e) => setMonthSearch(e.target.value)} placeholder="Search month (e.g. 11, 2026-11)" className="focus-ring h-9 w-full rounded-lg border border-line bg-surface-2 pl-8 pr-2 text-sm text-foreground" />
+              {selectedIsAuto ? (
+                <div className="rounded-lg border border-sky-500/25 bg-sky-500/10 px-3 py-3 text-sm text-sky-800 dark:text-sky-200">
+                  <p className="font-semibold">Automatic Stripe subscription (international)</p>
+                  <p className="mt-0.5 text-xs sm:text-sm">This account is outside Pakistan, so billing is handled automatically via Stripe (checkout, payment, activation, and renewals). Manual vouchers/mark-paid are for Pakistan/local accounts only.</p>
                 </div>
-              </div>
-              <p className="text-xs text-muted">Only vouchers from {currentYear}-{String(currentMonth).padStart(2, "0")} forward are created (past months not allowed). Mark Paid = exact date &amp; time + 35 days (2 vouchers = 65 days). Demo→Real conversion marks current month as paid.</p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <label className="text-sm text-foreground"><span className="mb-1 block text-xs font-medium text-muted">Year (current or future)</span>
+                      <input type="number" min={currentYear} max={2100} value={year} onChange={(e) => setYear(clampYear(Number(e.target.value)))} className="focus-ring h-9 w-28 rounded-lg border border-line bg-surface-2 px-2 text-sm text-foreground" />
+                    </label>
+                    <button type="button" disabled={!!working} onClick={() => void generateYear()} className="focus-ring inline-flex h-9 items-center gap-2 rounded-lg border border-accent-line bg-accent-soft px-3 text-sm font-semibold text-accent hover:opacity-90 disabled:opacity-60">
+                      {working === "generate" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />} Generate monthly vouchers ({clampYear(year)})
+                    </button>
+                    <div className="relative min-w-[180px] flex-1">
+                      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                      <input type="text" value={monthSearch} onChange={(e) => setMonthSearch(e.target.value)} placeholder="Search month (e.g. 11, 2026-11)" className="focus-ring h-9 w-full rounded-lg border border-line bg-surface-2 pl-8 pr-2 text-sm text-foreground" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted">Pakistan/local manual billing only. Vouchers from {currentYear}-{String(currentMonth).padStart(2, "0")} forward can be created. Mark Paid = exact date &amp; time + 35 days (2 vouchers = 65 days).</p>
+                </>
+              )}
 
               {notice ? <div className={cn("rounded-lg border px-3 py-2 text-sm", notice.tone === "ok" ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300" : "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300")}>{notice.text}</div> : null}
 
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-surface-2/40 px-3 py-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted"><Ticket className="mr-1 inline h-3.5 w-3.5" />Vouchers ({filteredVouchers.length}{filteredVouchers.length !== vouchers.length ? ` / ${vouchers.length}` : ""})</p>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted">{pickedCount > 0 ? `${pickedCount} selected = ${daysFor(pickedCount)} days` : "Select unpaid → Mark Paid"}</span>
-                  <button type="button" disabled={pickedCount === 0 || !!working} onClick={() => setConfirmPaid(true)} className="focus-ring inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50">
-                    <BadgeCheck className="h-4 w-4" /> Mark Paid (manual)
-                  </button>
+                  <span className="text-xs text-muted">{selectedIsAuto ? "Automatic via Stripe (no manual marking)" : (pickedCount > 0 ? `${pickedCount} selected = ${daysFor(pickedCount)} days` : "Select unpaid → Mark Paid")}</span>
+                  {!selectedIsAuto ? (
+                    <button type="button" disabled={pickedCount === 0 || !!working} onClick={() => setConfirmPaid(true)} className="focus-ring inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50">
+                      <BadgeCheck className="h-4 w-4" /> Mark Paid (manual)
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
@@ -231,7 +252,7 @@ export default function BillingPage() {
                         const checked = !!picked[v.id];
                         return (
                           <tr key={v.id} className={cn("border-t border-line/70", checked && "bg-accent-soft/20")}>
-                            <td className="px-3 py-2">{canPick ? <input type="checkbox" checked={checked} onChange={(e) => setPicked((p) => ({ ...p, [v.id]: e.target.checked }))} className="h-4 w-4 accent-accent" aria-label={`Mark ${v.label} paid`} /> : <span className="text-muted">—</span>}</td>
+                            <td className="px-3 py-2">{!selectedIsAuto && canPick ? <input type="checkbox" checked={checked} onChange={(e) => setPicked((p) => ({ ...p, [v.id]: e.target.checked }))} className="h-4 w-4 accent-accent" aria-label={`Mark ${v.label} paid`} /> : <span className="text-muted">—</span>}</td>
                             <td className="px-3 py-2 font-medium text-foreground">{v.label}</td>
                             <td className="px-3 py-2 tabular-nums text-foreground">{formatCurrency(v.amountUsd)}</td>
                             <td className="px-3 py-2"><span className={cn("rounded-md border px-2 py-0.5 text-xs font-medium", v.status === "PAID" ? "border-emerald-600/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-amber-600/20 bg-amber-500/10 text-amber-700 dark:text-amber-400")}>{v.status}</span></td>
@@ -244,7 +265,7 @@ export default function BillingPage() {
                   </table>
                 )}
               </div>
-              <p className="flex items-start gap-1.5 text-xs text-muted"><Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" />Mark Paid (manual) = saves the current exact time and sets the panel open for <b className="text-foreground">N×30+5 days</b> (1→35, 2→65). On expiry, auto Deactive, data preserved. Past-dated vouchers are not created.</p>
+              <p className="flex items-start gap-1.5 text-xs text-muted"><Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" />{selectedIsAuto ? <>Automatic Stripe billing: successful payments (including renewals) activate/extend access automatically. Pakistan accounts use manual voucher marking in this dashboard.</> : <>Mark Paid (manual, Pakistan/local) = saves the current exact time and sets the panel open for <b className="text-foreground">N×30+5 days</b> (1→35, 2→65). On expiry, auto Deactive, data preserved.</>}</p>
             </div>
           )}
         </section>

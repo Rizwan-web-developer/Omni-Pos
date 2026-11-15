@@ -11,9 +11,19 @@ export const STRIPE_PACKAGES = [
 
 export type StripePackageKey = (typeof STRIPE_PACKAGES)[number]["key"];
 
+export function isPakistanCountry(country?: string | null): boolean {
+  const c = (country || "").trim().toLowerCase();
+  return c === "pakistan" || c === "pk" || c === "islamic republic of pakistan";
+}
+
 export function isInternationalBillingCountry(country?: string | null): boolean {
-  // Pakistan/local clients use manual billing. Everyone else uses Stripe.
-  return currencyForCountry(country) !== "PKR";
+  // Pakistan/local clients use manual billing in admin dashboard.
+  // All other regions/countries use automatic Stripe subscription billing.
+  return !isPakistanCountry(country);
+}
+
+export function billingModeForCountry(country?: string | null): "LOCAL_MANUAL" | "INTERNATIONAL_AUTO" {
+  return isPakistanCountry(country) ? "LOCAL_MANUAL" : "INTERNATIONAL_AUTO";
 }
 
 export function getStripe(): Stripe {

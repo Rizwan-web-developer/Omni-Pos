@@ -7,6 +7,7 @@ import { fromAccountType, fromBusinessStatus, fromIndustryType, fromPlanTier, to
 import { PLAN_BY_KEY } from "@/lib/data";
 import { computeValidUntil } from "@/lib/subscription";
 import { getTenantFeatureKeys, setTenantFeatures } from "@/lib/tenant-features";
+import { billingModeForCountry } from "@/lib/stripe";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const access = await requireTenantAccess(params.id);
@@ -66,6 +67,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       if (email) data.email = email;
     }
     if (typeof body.phone === "string") data.phone = body.phone.trim() || null;
+    if (typeof body.country === "string") {
+      const country = body.country.trim();
+      data.country = country || null;
+      data.billingMode = billingModeForCountry(country) as any;
+    }
     if (typeof body.location === "string") data.location = body.location.trim() || null;
     if (typeof body.industry === "string") data.industryType = toIndustryType(body.industry);
     if (typeof body.plan === "string") {
@@ -88,6 +94,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       data.status = BusinessStatus.ACTIVE;
       data.isActive = true;
       data.trialEndsAt = null;
+      // Admin override: mark as paid/active now. International accounts otherwise auto-renew via Stripe.
       data.lastPaidAt = now;
       data.subscriptionPaidUntil = validUntil;
 
