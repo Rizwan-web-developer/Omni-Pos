@@ -394,16 +394,6 @@ export function SuppliersView({ businessId }: { businessId: string }) {
         </button>
       </div>
 
-      <div className="rounded-xl border border-accent-line bg-accent-soft/50 p-4 text-sm text-foreground">
-        <p className="font-semibold">How it works</p>
-        <p className="mt-1 text-muted">
-          A supplier is the shop you take stock from. Add the supplier, then record a purchase bill for each stock you take.
-          If you pay the whole bill right away, it is marked <b className="text-foreground">Paid</b>. If you pay part of it,
-          the bill shows the amount paid and the amount still left. Every product you buy stays linked to that supplier,
-          so you can see its stock, how much was sold and the revenue it generated.
-        </p>
-      </div>
-
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ["Suppliers", String(suppliers.length)],

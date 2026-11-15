@@ -5,36 +5,60 @@ export function cn(...inputs: Array<string | false | null | undefined>): string 
   return inputs.filter(Boolean).join(" ");
 }
 
-/** Display currency: US Dollar (international). */
+/** Display currency: US Dollar (international). Pakistan uses PKR. */
 export const CURRENCY = "USD";
+export const USD_TO_PKR = 280;
 
-function formatUsdBase(value: number): string {
-  const safe = Number.isFinite(value) ? value : 0;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(safe);
+export type DisplayCurrency = "USD" | "PKR";
+let displayCurrency: DisplayCurrency = "USD";
+
+export function setDisplayCurrency(currency: DisplayCurrency): void {
+  displayCurrency = currency === "PKR" ? "PKR" : "USD";
 }
 
-function formatUsdCompact(value: number): string {
+export function getDisplayCurrency(): DisplayCurrency {
+  return displayCurrency;
+}
+
+export function currencyForCountry(country?: string | null): DisplayCurrency {
+  const c = (country || "").trim().toLowerCase();
+  return c === "pakistan" || c === "pk" ? "PKR" : "USD";
+}
+
+function toDisplayValue(value: number): number {
+  // Pakistan: show amounts in PKR (local currency). Other regions: USD.
+  return Number.isFinite(value) ? value : 0;
+}
+
+function formatBase(value: number, currency: DisplayCurrency): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    currencyDisplay: currency === "PKR" ? "narrowSymbol" : "symbol",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: currency === "PKR" ? 0 : 2,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
+function formatCompactValue(value: number, currency: DisplayCurrency): string {
   const safe = Number.isFinite(value) ? value : 0;
   const sign = safe < 0 ? "-" : "";
   const abs = Math.abs(safe);
-  if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
-  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
-  return `${sign}$${abs.toFixed(abs % 1 === 0 ? 0 : 2)}`;
+  const sym = currency === "PKR" ? "₨" : "$";
+  if (abs >= 1_000_000_000) return `${sign}${sym}${(abs / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`;
+  if (abs >= 1_000_000) return `${sign}${sym}${(abs / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (abs >= 1_000) return `${sign}${sym}${(abs / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  return `${sign}${sym}${abs.toFixed(currency === "PKR" || abs % 1 === 0 ? 0 : 2)}`;
 }
 
 export function formatCurrency(value: number, compact = false): string {
-  return compact ? formatUsdCompact(value) : formatUsdBase(value);
+  const converted = toDisplayValue(value);
+  return compact ? formatCompactValue(converted, displayCurrency) : formatBase(converted, displayCurrency);
 }
 
-/** Amount for POS carts and receipts (USD). */
+/** Amount for POS carts and receipts. Uses PKR for Pakistan, USD otherwise. */
 export function formatMoney(value: number): string {
-  return formatUsdBase(value);
+  return formatBase(toDisplayValue(value), displayCurrency);
 }
 
 /** @deprecated retained for backward compatibility; USD values pass through. */

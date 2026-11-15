@@ -49,6 +49,7 @@ export async function POST(req: Request) {
     const ownerName = String(body?.ownerName ?? "").trim() || name;
     const email = normalizeEmail(String(body?.email ?? ""));
     const phone = String(body?.phone ?? "").trim();
+    const country = String(body?.country ?? "").trim();
     const location = String(body?.location ?? "").trim();
     const password = String(body?.password ?? "");
     const industry = String(body?.industry ?? "mobile");
@@ -59,7 +60,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Enter a valid email address." }, { status: 400 });
     }
     if (!phone) return NextResponse.json({ message: "Phone number is required." }, { status: 400 });
-    if (!location) return NextResponse.json({ message: "Business location is required." }, { status: 400 });
+    if (!country) return NextResponse.json({ message: "Country/region is required." }, { status: 400 });
+    if (!location) return NextResponse.json({ message: "City/address is required." }, { status: 400 });
     if (!ALLOWED_INDUSTRIES.has(industry)) {
       return NextResponse.json({ message: "Choose a valid business category." }, { status: 400 });
     }
@@ -87,6 +89,7 @@ export async function POST(req: Request) {
         ownerName,
         email,
         phone: phone || null,
+        country: country || null,
         location: location || null,
         mrr: 0,
         users: {

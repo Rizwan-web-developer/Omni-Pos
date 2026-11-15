@@ -23,11 +23,11 @@ import {
 } from "lucide-react";
 
 import { fetchPlatformBranding, loadAdminSettings, type AdminSettings, DEFAULT_ADMIN_SETTINGS } from "@/lib/admin";
-import { cn } from "@/lib/utils";
+import { cn, currencyForCountry, setDisplayCurrency } from "@/lib/utils";
 
 type Shop = {
   id: string; uid?: string | null; businessName: string; industryType?: string; status?: string; accountType?: string;
-  email?: string | null; phone?: string | null; location?: string | null; logoDataUrl?: string | null;
+  email?: string | null; phone?: string | null; country?: string | null; location?: string | null; logoDataUrl?: string | null;
   subscriptionPaidUntil?: string | null;
 };
 
@@ -83,7 +83,11 @@ export function ShopShell({ businessId, children }: { businessId: string; childr
     try {
       const res = await fetch(`/api/businesses/${businessId}/profile`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data.business) setShop(data.business as Shop);
+      if (res.ok && data.business) {
+        const b = data.business as Shop;
+        setShop(b);
+        setDisplayCurrency(currencyForCountry(b.country ?? b.location));
+      }
     } catch { /* ignore */ }
   };
   useEffect(() => { void refreshShop(); }, [businessId]);

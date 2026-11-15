@@ -9,7 +9,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   const baseSelect = {
     id: true, uid: true, businessName: true, slug: true, industryType: true, status: true, accountType: true,
-    email: true, phone: true, location: true, subscriptionPaidUntil: true, lastPaidAt: true,
+    email: true, phone: true, country: true, location: true, subscriptionPaidUntil: true, lastPaidAt: true,
   } as any;
   let business: any = null;
   try {
@@ -34,6 +34,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     // Shop can manage profile (NOT email)
     if (typeof body.businessName === "string" && body.businessName.trim().length >= 2) data.businessName = body.businessName.trim().slice(0, 120);
     if (typeof body.phone === "string") data.phone = body.phone.trim().slice(0, 40) || null;
+    if (typeof body.country === "string") data.country = body.country.trim().slice(0, 80) || null;
     if (typeof body.location === "string") data.location = body.location.trim().slice(0, 200) || null;
     if (body.logoDataUrl !== undefined) {
       const logo = typeof body.logoDataUrl === "string" ? body.logoDataUrl : "";
@@ -45,7 +46,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (Object.keys(data).length === 0) return NextResponse.json({ message: "No valid changes provided." }, { status: 400 });
 
     let business: any = null;
-    const outBase = { id: true, uid: true, businessName: true, email: true, phone: true, location: true } as any;
+    const outBase = { id: true, uid: true, businessName: true, email: true, phone: true, country: true, location: true } as any;
     try {
       business = await prisma.tenant.update({ where: { id: params.id }, data: data as any, select: { ...outBase, logoDataUrl: true } });
     } catch {

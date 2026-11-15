@@ -70,6 +70,7 @@ export async function POST(req: Request) {
       const name = String(body?.name ?? "").trim();
       const ownerName = String(body?.ownerName ?? "").trim() || name;
       const phone = String(body?.phone ?? "").trim();
+      const country = String(body?.country ?? "").trim();
       const location = String(body?.location ?? "").trim();
       const password = String(body?.password ?? "");
       const industry = String(body?.industry ?? "electronics");
@@ -77,7 +78,8 @@ export async function POST(req: Request) {
 
       if (name.length < 2) return NextResponse.json({ message: "Business name is required." }, { status: 400 });
       if (!phone) return NextResponse.json({ message: "Phone number is required." }, { status: 400 });
-      if (!location) return NextResponse.json({ message: "Business location is required." }, { status: 400 });
+      if (!country) return NextResponse.json({ message: "Country/region is required." }, { status: 400 });
+      if (!location) return NextResponse.json({ message: "City/address is required." }, { status: 400 });
       if (!ALLOWED_INDUSTRIES.has(industry)) {
         return NextResponse.json({ message: "Choose a valid business category." }, { status: 400 });
       }
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
       const existingUser = await prisma.user.findUnique({ where: { email }, select: { id: true } });
       if (existingUser) return NextResponse.json({ message: "This email already has an account. Please sign in." }, { status: 409 });
 
-      const payload = { name, ownerName, phone, location, password, industry, package: packageKey };
+      const payload = { name, ownerName, phone, country, location, password, industry, package: packageKey };
       await issueOtp(email, "SIGNUP", payload, origin);
       return NextResponse.json({ ok: true, step: "otp", purpose: "SIGNUP", email, message: "Verification code sent to your email." });
     }

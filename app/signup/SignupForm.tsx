@@ -19,6 +19,7 @@ import {
   User,
 } from "lucide-react";
 
+import { COUNTRIES } from "@/lib/countries";
 import { INDUSTRIES } from "@/lib/data";
 import type { IndustryKey } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ export function SignupForm() {
     ownerName: "",
     email: "",
     phone: "",
+    country: "",
     location: "",
     industry: "electronics" as IndustryKey,
     package: PACKAGES.some((pkg) => pkg.key === initialPackage) ? (initialPackage as string) : "pro",
@@ -101,6 +103,7 @@ export function SignupForm() {
           ownerName: form.ownerName,
           email: form.email,
           phone: form.phone,
+          country: form.country,
           location: form.location,
           industry: form.industry,
           package: form.package,
@@ -239,11 +242,30 @@ export function SignupForm() {
                         <input id="signup-email" type="email" required value={form.email} onChange={(e) => patch({ email: e.target.value })} placeholder="you@business.com" autoComplete="off" className={cn(fieldClass(false), "pl-9")} />
                       </div>
                     </div>
-                    <div className="sm:col-span-2">
-                      <label htmlFor="signup-location" className="mb-1.5 block text-sm font-medium">Location <span className="text-rose-500">*</span></label>
+                    <div>
+                      <label htmlFor="signup-country" className="mb-1.5 block text-sm font-medium">Country / Region <span className="text-rose-500">*</span></label>
                       <div className="relative">
                         <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-                        <input id="signup-location" required value={form.location} onChange={(e) => patch({ location: e.target.value })} placeholder="City, Country" className={cn(fieldClass(false), "pl-9")} />
+                        <select
+                          id="signup-country"
+                          required
+                          value={form.country}
+                          onChange={(e) => patch({ country: e.target.value })}
+                          className={cn(fieldClass(false), "appearance-none pl-9 pr-8")}
+                        >
+                          <option value="">Select country / region</option>
+                          {COUNTRIES.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <p className="mt-1 text-xs text-muted">All regions use $. Pakistan uses PKR (converted).</p>
+                    </div>
+                    <div>
+                      <label htmlFor="signup-location" className="mb-1.5 block text-sm font-medium">City / Address <span className="text-rose-500">*</span></label>
+                      <div className="relative">
+                        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+                        <input id="signup-location" required value={form.location} onChange={(e) => patch({ location: e.target.value })} placeholder="City, area or address" className={cn(fieldClass(false), "pl-9")} />
                       </div>
                     </div>
                   </div>

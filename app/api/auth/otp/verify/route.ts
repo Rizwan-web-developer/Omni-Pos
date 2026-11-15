@@ -87,6 +87,7 @@ export async function POST(req: Request) {
       const name = String(payload.name ?? "").trim();
       const ownerName = String(payload.ownerName ?? name).trim() || name;
       const phone = String(payload.phone ?? "").trim();
+      const country = String(payload.country ?? "").trim();
       const location = String(payload.location ?? "").trim();
       const password = String(payload.password ?? "");
       const industry = String(payload.industry ?? "electronics");
@@ -117,6 +118,7 @@ export async function POST(req: Request) {
           ownerName,
           email,
           phone: phone || null,
+          country: country || null,
           location: location || null,
           mrr: 0,
           users: {
