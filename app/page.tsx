@@ -15,6 +15,7 @@ import {
   Layers,
   Mail,
   Package,
+  Palette,
   Phone,
   ReceiptText,
   RefreshCw,
@@ -31,6 +32,7 @@ import {
 import { prisma } from "@/lib/db";
 import { getSession, isPlatformAdmin } from "@/lib/auth/server";
 import { BRAND_NAME, CONTACT_EMAIL, CONTACT_WHATSAPP_DISPLAY, CONTACT_WHATSAPP_LINK } from "@/lib/brand";
+import { ThemeSelector } from "@/components/ThemeSelector";
 
 export const dynamic = "force-dynamic";
 
@@ -152,6 +154,7 @@ export default async function LandingPage() {
             <a href="#contact" className="hover:text-foreground">Contact</a>
           </nav>
           <div className="flex items-center gap-2">
+            <ThemeSelector />
             <Link href="/login" className="focus-ring rounded-lg border border-line bg-surface px-3.5 py-2 text-sm font-medium hover:border-line-strong">
               Login
             </Link>
