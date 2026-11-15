@@ -26,10 +26,9 @@ import {
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { AddProductModal, type CreatedProduct } from "@/components/store/AddProductModal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { formatCurrency } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { cn, currencyForCountry, formatCurrency } from "@/lib/utils";
 
-type Business = { id: string; uid?: string | null; businessName: string; slug?: string | null; status: string; industryType?: string; location?: string | null; ownerName?: string | null; phone?: string | null; logoDataUrl?: string | null };
+type Business = { id: string; uid?: string | null; businessName: string; slug?: string | null; status: string; industryType?: string; country?: string | null; location?: string | null; ownerName?: string | null; phone?: string | null; logoDataUrl?: string | null; accountType?: string; trialEndsAt?: string | null; subscriptionPaidUntil?: string | null };
 type SerialTag = { id: string; serialOrImei: string; isSold?: boolean; warrantyDays?: number };
 type Product = {
   id: string; name: string; sku?: string | null; barcode?: string | null; category?: string | null; categoryId?: string | null;
@@ -619,9 +618,16 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
 
       {upgradeLocked ? (
         <div className="mx-auto mt-3 max-w-[1600px] px-4 sm:px-6">
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-            <p className="font-semibold">Upgrade to Pro</p>
-            <p className="mt-0.5 text-xs sm:text-sm">Your 7-day free trial or subscription period has ended. Your data is preserved, but selling, adding stock, and other actions are paused until you upgrade.</p>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            <div>
+              <p className="font-semibold">Upgrade to continue</p>
+              <p className="mt-0.5 text-xs sm:text-sm">Your 7-day free trial or subscription period has ended. Your data is preserved, but selling, adding stock, and other actions are paused until you upgrade.</p>
+            </div>
+            {currencyForCountry(business?.country) === "PKR" ? (
+              <Link href={`/store/${businessId}/support`} className="focus-ring inline-flex shrink-0 items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg">Contact support to renew</Link>
+            ) : (
+              <Link href={`/store/${businessId}/upgrade`} className="focus-ring inline-flex shrink-0 items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg">Upgrade &amp; pay online</Link>
+            )}
           </div>
         </div>
       ) : null}
