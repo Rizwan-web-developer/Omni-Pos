@@ -156,38 +156,40 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     if (!existing) return NextResponse.json({ message: "Business not found." }, { status: 404 });
 
     // Delete in an order that satisfies Restrict FKs (InvoiceItem -> Product).
-    // Most other tenant relations cascade on delete at DB level.
-    await prisma.$transaction(async (tx) => {
-      const t: any = tx as any;
+    // Run sequentially (not an interactive transaction) to avoid Prisma/Supabase pooler
+    // "Transaction not found" errors on long operations.
+    const p: any = prisma as any;
+    const steps: Array<() => Promise<unknown>> = [
+      () => p.invoiceItem.deleteMany({ where: { invoice: { tenantId } } }),
+      () => p.invoice.deleteMany({ where: { tenantId } }),
+      () => p.serialItem.deleteMany({ where: { tenantId } }),
+      () => p.mobileItem.deleteMany({ where: { product: { tenantId } } }),
+      () => p.pharmacyItem.deleteMany({ where: { product: { tenantId } } }),
+      () => p.electronicsItem.deleteMany({ where: { product: { tenantId } } }),
+      () => p.supplierEntry.deleteMany({ where: { tenantId } }),
+      () => p.supplier.deleteMany({ where: { tenantId } }),
+      () => p.product.deleteMany({ where: { tenantId } }),
+      () => p.brand.deleteMany({ where: { tenantId } }),
+      () => p.category.deleteMany({ where: { tenantId } }),
+      () => p.serviceJob.deleteMany({ where: { tenantId } }),
+      () => p.tenantFeature.deleteMany({ where: { tenantId } }),
+      () => p.subscriptionVoucher.deleteMany({ where: { tenantId } }),
+      () => p.billingInvoice.deleteMany({ where: { tenantId } }),
+      () => p.businessSubscription.deleteMany({ where: { tenantId } }),
+      () => p.syncHealthLog.deleteMany({ where: { tenantId } }),
+      () => p.supportTicket.deleteMany({ where: { tenantId } }),
+      () => p.user.deleteMany({ where: { tenantId } }),
+    ];
 
-      await t.invoiceItem.deleteMany({ where: { invoice: { tenantId } } }).catch(() => {});
-      await t.invoice.deleteMany({ where: { tenantId } }).catch(() => {});
+    for (const step of steps) {
+      try {
+        await step();
+      } catch {
+        // Best-effort cleanup; continue so tenant delete can still succeed if cascades cover it.
+      }
+    }
 
-      await t.serialItem.deleteMany({ where: { tenantId } }).catch(() => {});
-
-      await t.mobileItem.deleteMany({ where: { product: { tenantId } } }).catch(() => {});
-      await t.pharmacyItem.deleteMany({ where: { product: { tenantId } } }).catch(() => {});
-      await t.electronicsItem.deleteMany({ where: { product: { tenantId } } }).catch(() => {});
-
-      // Supplier/product links and product FKs must be clear before deleting products.
-      await t.supplierEntry.deleteMany({ where: { tenantId } }).catch(() => {});
-      await t.supplier.deleteMany({ where: { tenantId } }).catch(() => {});
-
-      await t.product.deleteMany({ where: { tenantId } }).catch(() => {});
-      await t.brand.deleteMany({ where: { tenantId } }).catch(() => {});
-      await t.category.deleteMany({ where: { tenantId } }).catch(() => {});
-
-      await t.serviceJob.deleteMany({ where: { tenantId } }).catch(() => {});
-      await t.tenantFeature.deleteMany({ where: { tenantId } }).catch(() => {});
-      await t.subscriptionVoucher.deleteMany({ where: { tenantId } }).catch(() => {});
-      await t.billingInvoice.deleteMany({ where: { tenantId } }).catch(() => {});
-      await t.businessSubscription.deleteMany({ where: { tenantId } }).catch(() => {});
-      await t.syncHealthLog.deleteMany({ where: { tenantId } }).catch(() => {});
-      await t.supportTicket.deleteMany({ where: { tenantId } }).catch(() => {});
-      await t.user.deleteMany({ where: { tenantId } }).catch(() => {});
-
-      await t.tenant.delete({ where: { id: tenantId } });
-    });
+    await p.tenant.delete({ where: { id: tenantId } });
 
     return NextResponse.json({ ok: true, deletedId: existing.id, name: existing.businessName });
   } catch (error) {
