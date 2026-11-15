@@ -71,7 +71,7 @@ export default function StoreBrandDetailPage({ params }: { params: { id: string;
     return (
       <div className="space-y-3">
         <Link href={`/store/${businessId}/brands`} className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"><ArrowLeft className="h-4 w-4" /> Brands</Link>
-        <p className="text-sm text-muted">Brand nahi mila.</p>
+        <p className="text-sm text-muted">Brand not found.</p>
       </div>
     );
   }
@@ -82,17 +82,17 @@ export default function StoreBrandDetailPage({ params }: { params: { id: string;
         <div>
           <Link href={`/store/${businessId}/brands`} className="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:underline"><ArrowLeft className="h-3.5 w-3.5" /> Brands</Link>
           <h1 className="mt-1 flex items-center gap-2 text-[22px] font-semibold tracking-tight text-foreground"><Tag className="h-5 w-5 text-accent" /> {brand.name}</h1>
-          <p className="mt-0.5 text-sm text-muted">{products.length} products is brand mein.</p>
+          <p className="mt-0.5 text-sm text-muted">{products.length} products in this brand.</p>
         </div>
       </div>
 
       <section className="rounded-xl border border-line bg-surface p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="min-w-[200px] flex-1">
-            <label className="mb-1 block text-xs font-medium text-muted">Search (is brand ki product)</label>
+            <label className="mb-1 block text-xs font-medium text-muted">Search products in this brand</label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Product search karein…" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products…" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted" />
             </div>
           </div>
           <div className="w-full sm:w-[240px]">
@@ -113,7 +113,7 @@ export default function StoreBrandDetailPage({ params }: { params: { id: string;
         </div>
         {filtered.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-muted">
-            {products.length === 0 ? "Is brand mein abhi koi product nahi. Product add karte waqt yeh brand select karein." : "Is filter/search se koi product nahi mili."}
+            {products.length === 0 ? "No products in this brand yet. Select this brand when you add a product." : "No products match this search or filter."}
           </p>
         ) : (
           <ul className="divide-y divide-line">

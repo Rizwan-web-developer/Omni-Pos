@@ -163,7 +163,7 @@ export function AddProductModal({
     if (!Number.isFinite(sp) || sp < 0) { setError("Valid selling price is required."); return; }
     const effectiveTracking: TrackingType = serialEnabled ? trackingType : "QUANTITY_ONLY";
     if (effectiveTracking === "SERIAL_OR_IMEI" && serials.length === 0) {
-      setError("IMEI ya Serial number add karein.");
+      setError("Add an IMEI or serial number.");
       return;
     }
     setSaving(true);
@@ -235,14 +235,14 @@ export function AddProductModal({
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">Category (select)</label>
               <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground" disabled={categoriesLoading}>
-                <option value="">{categoriesLoading ? "Loading categories…" : categories.length === 0 ? "No categories — Categories page se add karein" : "Select category"}</option>
+                <option value="">{categoriesLoading ? "Loading categories…" : categories.length === 0 ? "No categories yet — add one on the Categories page" : "Select category"}</option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted">Brand (select)</label>
               <select value={brandId} onChange={(e) => setBrandId(e.target.value)} className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-foreground" disabled={brandsLoading}>
-                <option value="">{brandsLoading ? "Loading brands…" : brands.length === 0 ? "No brands — Brands page se add karein" : "Select brand"}</option>
+                <option value="">{brandsLoading ? "Loading brands…" : brands.length === 0 ? "No brands yet — add one on the Brands page" : "Select brand"}</option>
                 {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
@@ -310,7 +310,7 @@ export function AddProductModal({
                 value={serialText}
                 onChange={(e) => setSerialText(e.target.value)}
                 rows={3}
-                placeholder="IMEI ya Serial number add karein (ek line mein ek)"
+                placeholder="Add IMEI or serial numbers (one per line)"
                 className="focus-ring w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-foreground placeholder:text-muted"
               />
               {serials.length > 0 ? <p className="mt-1 text-xs text-muted"><span className="font-semibold tabular-nums text-foreground">{serials.length}</span> serial/IMEI</p> : null}

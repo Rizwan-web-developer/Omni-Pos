@@ -782,7 +782,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
                 <button type="button" onClick={() => void checkout()} disabled={cart.length === 0 || checkingOut} className="focus-ring flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg disabled:opacity-50">
                   {checkingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Checkout &amp; deduct stock
                 </button>
-                {features.offlineSync ? <p className="text-center text-[11px] text-muted">Internet drop ho to sale offline save hogi aur khud sync ho jayegi.</p> : null}
+                {features.offlineSync ? <p className="text-center text-[11px] text-muted">If the internet drops, the sale is saved offline and syncs automatically when you are back online.</p> : null}
               </div>
               {lastInvoice ? (
                 <div className="mt-3 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] p-3 text-sm">
@@ -1169,7 +1169,7 @@ export function StorePanel({ businessId, section }: { businessId: string; sectio
         onClose={() => (deleteBusy ? undefined : setConfirmDelete(null))}
         onConfirm={() => (confirmDelete ? void doDeleteProduct(confirmDelete) : undefined)}
         title="Delete product?"
-        description={confirmDelete ? <span>“{confirmDelete.name}” delete ho jayega. Out of stock ya sales history wali product bhi delete ho sakti hai (record history ke liye safe rahega).</span> : null}
+        description={confirmDelete ? <span>“{confirmDelete.name}” will be deleted. Products that are out of stock or have sales history can also be deleted (history stays safe for records).</span> : null}
         confirmLabel="Delete"
         tone="danger"
         loading={deleteBusy}

@@ -58,7 +58,7 @@ export default function StoreCategoryDetailPage({ params }: { params: { id: stri
     return (
       <div className="space-y-3">
         <Link href={`/store/${businessId}/categories`} className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"><ArrowLeft className="h-4 w-4" /> Categories</Link>
-        <p className="text-sm text-muted">Category nahi mili.</p>
+        <p className="text-sm text-muted">Category not found.</p>
       </div>
     );
   }
@@ -68,7 +68,7 @@ export default function StoreCategoryDetailPage({ params }: { params: { id: stri
       <div>
         <Link href={`/store/${businessId}/categories`} className="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:underline"><ArrowLeft className="h-3.5 w-3.5" /> Categories</Link>
         <h1 className="mt-1 flex items-center gap-2 text-[22px] font-semibold tracking-tight text-foreground"><Layers className="h-5 w-5 text-accent" /> {category.name}</h1>
-        <p className="mt-0.5 text-sm text-muted">{products.length} products (har brand ki) is category mein.</p>
+        <p className="mt-0.5 text-sm text-muted">{products.length} products (from all brands) in this category.</p>
       </div>
 
       <section className="rounded-xl border border-line bg-surface p-4">
@@ -77,7 +77,7 @@ export default function StoreCategoryDetailPage({ params }: { params: { id: stri
             <label className="mb-1 block text-xs font-medium text-muted">Search</label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Product search karein…" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products…" className="focus-ring h-10 w-full rounded-lg border border-line bg-surface-2 pl-8 pr-3 text-sm text-foreground placeholder:text-muted" />
             </div>
           </div>
           <div className="w-full sm:w-[240px]">
@@ -92,7 +92,7 @@ export default function StoreCategoryDetailPage({ params }: { params: { id: stri
       <section className="overflow-hidden rounded-xl border border-line bg-surface">
         <div className="border-b border-line px-4 py-3"><h2 className="text-base font-semibold text-foreground">Products</h2><p className="text-sm text-muted">{filtered.length} shown</p></div>
         {filtered.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-muted">{products.length === 0 ? "Is category mein abhi koi product nahi. Product add karte waqt yeh category select karein." : "Is filter/search se koi product nahi mili."}</p>
+          <p className="px-4 py-10 text-center text-sm text-muted">{products.length === 0 ? "No products in this category yet. Select this category when you add a product." : "No products match this search or filter."}</p>
         ) : (
           <ul className="divide-y divide-line">
             {filtered.map((p) => {

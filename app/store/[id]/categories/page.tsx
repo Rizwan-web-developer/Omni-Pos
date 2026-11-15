@@ -42,7 +42,7 @@ export default function StoreCategoriesPage({ params }: { params: { id: string }
     e.preventDefault();
     flashOk(""); setError("");
     const n = name.trim();
-    if (n.length < 2) { flashErr("Category name likhein."); return; }
+    if (n.length < 2) { flashErr("Enter a category name."); return; }
     setAdding(true);
     try {
       const res = await fetch(`/api/businesses/${businessId}/categories`, {
@@ -51,12 +51,12 @@ export default function StoreCategoriesPage({ params }: { params: { id: string }
         body: JSON.stringify({ name: n }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Category add nahi ho saki.");
+      if (!res.ok) throw new Error(data.message || "Could not add the category.");
       setCategories((cur) => [...cur, data.category as Category].sort((a, b) => a.name.localeCompare(b.name)));
       setName("");
-      flashOk("Category add ho gayi.");
+      flashOk("Category added.");
     } catch (err) {
-      flashErr(err instanceof Error ? err.message : "Category add nahi ho saki.");
+      flashErr(err instanceof Error ? err.message : "Could not add the category.");
     } finally {
       setAdding(false);
     }
@@ -65,7 +65,7 @@ export default function StoreCategoriesPage({ params }: { params: { id: string }
   const saveEdit = async () => {
     if (!edit) return;
     const n = editName.trim();
-    if (n.length < 2) { flashErr("Category name likhein."); return; }
+    if (n.length < 2) { flashErr("Enter a category name."); return; }
     setEditBusy(true);
     try {
       const res = await fetch(`/api/businesses/${businessId}/categories/${edit.id}`, {
@@ -74,12 +74,12 @@ export default function StoreCategoriesPage({ params }: { params: { id: string }
         body: JSON.stringify({ name: n }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Update nahi ho saka.");
+      if (!res.ok) throw new Error(data.message || "Could not update the category.");
       setCategories((cur) => cur.map((c) => (c.id === edit.id ? { ...c, ...(data.category || {}), name: n } : c)).sort((a, b) => a.name.localeCompare(b.name)));
       setEdit(null);
-      flashOk("Category update ho gayi.");
+      flashOk("Category updated.");
     } catch (err) {
-      flashErr(err instanceof Error ? err.message : "Update nahi ho saka.");
+      flashErr(err instanceof Error ? err.message : "Could not update the category.");
     } finally {
       setEditBusy(false);
     }
@@ -91,12 +91,12 @@ export default function StoreCategoriesPage({ params }: { params: { id: string }
     try {
       const res = await fetch(`/api/businesses/${businessId}/categories/${del.id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Delete nahi ho saka.");
+      if (!res.ok) throw new Error(data.message || "Could not delete the category.");
       setCategories((cur) => cur.filter((c) => c.id !== del.id));
       setDel(null);
-      flashOk("Category delete ho gayi.");
+      flashOk("Category deleted.");
     } catch (err) {
-      flashErr(err instanceof Error ? err.message : "Delete nahi ho saka.");
+      flashErr(err instanceof Error ? err.message : "Could not delete the category.");
     } finally {
       setDelBusy(false);
     }
@@ -106,7 +106,7 @@ export default function StoreCategoriesPage({ params }: { params: { id: string }
     <div className="space-y-4">
       <div>
         <h1 className="flex items-center gap-2 text-[22px] font-semibold tracking-tight text-foreground"><Layers className="h-5 w-5 text-accent" /> Categories</h1>
-        <p className="mt-0.5 text-sm text-muted">Categories add, rename ya delete karein. Product add karte waqt category select hogi.</p>
+        <p className="mt-0.5 text-sm text-muted">Add, rename or delete categories. Choose a category when you add a product.</p>
       </div>
 
       <section className="rounded-xl border border-line bg-surface p-4">
@@ -131,7 +131,7 @@ export default function StoreCategoriesPage({ params }: { params: { id: string }
         {loading ? (
           <div className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-muted"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
         ) : categories.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-muted">Abhi koi category nahi. Upar se category add karein.</p>
+          <p className="px-4 py-10 text-center text-sm text-muted">No categories yet. Add one above.</p>
         ) : (
           <ul className="divide-y divide-line">
             {categories.map((c) => (
@@ -173,7 +173,7 @@ export default function StoreCategoriesPage({ params }: { params: { id: string }
         onClose={() => (delBusy ? undefined : setDel(null))}
         onConfirm={() => void doDelete()}
         title="Delete category?"
-        description={del ? <span>“{del.name}” delete ho jayegi. Is category ki products rehengi (category unse hat jayegi).</span> : null}
+        description={del ? <span>“{del.name}” will be deleted. Products in this category will stay, but the category will be removed from them.</span> : null}
         confirmLabel="Delete"
         tone="danger"
         loading={delBusy}

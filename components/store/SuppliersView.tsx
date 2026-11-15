@@ -67,7 +67,7 @@ export function SuppliersView({ businessId }: { businessId: string }) {
 
   const createSupplier = async () => {
     setError(""); setNotice("");
-    if (name.trim().length < 2) { setError("Supplier name likhein."); return; }
+    if (name.trim().length < 2) { setError("Enter a supplier name."); return; }
     setSaving(true);
     try {
       const res = await fetch(`/api/businesses/${businessId}/suppliers`, {
@@ -94,7 +94,7 @@ export function SuppliersView({ businessId }: { businessId: string }) {
     if (!selected) return;
     setError(""); setNotice("");
     const amount = Number(entryAmount);
-    if (!Number.isFinite(amount) || amount <= 0) { setError("Valid amount likhein."); return; }
+    if (!Number.isFinite(amount) || amount <= 0) { setError("Enter a valid amount."); return; }
     setEntryBusy(true);
     try {
       const res = await fetch(`/api/businesses/${businessId}/suppliers/${selected.id}/entries`, {
@@ -305,7 +305,7 @@ export function SuppliersView({ businessId }: { businessId: string }) {
         onClose={() => (delBusy ? undefined : setDelSupplier(null))}
         onConfirm={() => void deleteSupplier()}
         title="Delete supplier?"
-        description={delSupplier ? <span>{delSupplier.name} aur uski tamam ledger entries delete ho jayengi.</span> : null}
+        description={delSupplier ? <span>{delSupplier.name} and all of its ledger entries will be deleted.</span> : null}
         confirmLabel="Delete"
         tone="danger"
         loading={delBusy}
@@ -316,7 +316,7 @@ export function SuppliersView({ businessId }: { businessId: string }) {
         onClose={() => (delBusy ? undefined : setDelEntry(null))}
         onConfirm={() => void deleteEntry()}
         title="Delete ledger entry?"
-        description={delEntry ? <span>{formatCurrency(delEntry.amountPkr)} ki {delEntry.type === "PURCHASE" ? "purchase" : "payment"} entry delete ho jayegi.</span> : null}
+        description={delEntry ? <span>The {delEntry.type === "PURCHASE" ? "purchase" : "payment"} entry of {formatCurrency(delEntry.amountPkr)} will be deleted.</span> : null}
         confirmLabel="Delete"
         tone="danger"
         loading={delBusy}

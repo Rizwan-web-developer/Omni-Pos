@@ -52,8 +52,8 @@ export default function StoreBrandsPage({ params }: { params: { id: string } }) 
   const onImage = async (e: ChangeEvent<HTMLInputElement>, set: (v: string | null) => void) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) { flashErr("Image file select karein."); return; }
-    try { set(await readImage(file)); } catch { flashErr("Image load nahi ho saki."); }
+    if (!file.type.startsWith("image/")) { flashErr("Select an image file."); return; }
+    try { set(await readImage(file)); } catch { flashErr("Could not load the image."); }
     e.target.value = "";
   };
 
@@ -61,7 +61,7 @@ export default function StoreBrandsPage({ params }: { params: { id: string } }) 
     e.preventDefault();
     flashOk(""); setError("");
     const n = name.trim();
-    if (n.length < 2) { flashErr("Brand name likhein."); return; }
+    if (n.length < 2) { flashErr("Enter a brand name."); return; }
     setAdding(true);
     try {
       const res = await fetch(`/api/businesses/${businessId}/brands`, {
@@ -70,13 +70,13 @@ export default function StoreBrandsPage({ params }: { params: { id: string } }) 
         body: JSON.stringify({ name: n, imageUrl }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Brand add nahi ho saka.");
+      if (!res.ok) throw new Error(data.message || "Could not add the brand.");
       setBrands((cur) => [...cur, data.brand as Brand].sort((a, b) => a.name.localeCompare(b.name)));
       setName("");
       setImageUrl(null);
-      flashOk("Brand add ho gaya.");
+      flashOk("Brand added.");
     } catch (err) {
-      flashErr(err instanceof Error ? err.message : "Brand add nahi ho saka.");
+      flashErr(err instanceof Error ? err.message : "Could not add the brand.");
     } finally {
       setAdding(false);
     }
@@ -87,7 +87,7 @@ export default function StoreBrandsPage({ params }: { params: { id: string } }) 
   const saveEdit = async () => {
     if (!edit) return;
     const n = editName.trim();
-    if (n.length < 2) { flashErr("Brand name likhein."); return; }
+    if (n.length < 2) { flashErr("Enter a brand name."); return; }
     setEditBusy(true);
     try {
       const res = await fetch(`/api/businesses/${businessId}/brands/${edit.id}`, {
@@ -96,12 +96,12 @@ export default function StoreBrandsPage({ params }: { params: { id: string } }) 
         body: JSON.stringify({ name: n, imageUrl: editImage }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Update nahi ho saka.");
+      if (!res.ok) throw new Error(data.message || "Could not update the brand.");
       setBrands((cur) => cur.map((b) => (b.id === edit.id ? { ...b, ...(data.brand || {}), name: n, imageUrl: editImage } : b)).sort((a, b) => a.name.localeCompare(b.name)));
       setEdit(null);
-      flashOk("Brand update ho gaya.");
+      flashOk("Brand updated.");
     } catch (err) {
-      flashErr(err instanceof Error ? err.message : "Update nahi ho saka.");
+      flashErr(err instanceof Error ? err.message : "Could not update the brand.");
     } finally {
       setEditBusy(false);
     }
@@ -113,12 +113,12 @@ export default function StoreBrandsPage({ params }: { params: { id: string } }) 
     try {
       const res = await fetch(`/api/businesses/${businessId}/brands/${del.id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Delete nahi ho saka.");
+      if (!res.ok) throw new Error(data.message || "Could not delete the brand.");
       setBrands((cur) => cur.filter((b) => b.id !== del.id));
       setDel(null);
-      flashOk("Brand delete ho gaya.");
+      flashOk("Brand deleted.");
     } catch (err) {
-      flashErr(err instanceof Error ? err.message : "Delete nahi ho saka.");
+      flashErr(err instanceof Error ? err.message : "Could not delete the brand.");
     } finally {
       setDelBusy(false);
     }
@@ -128,7 +128,7 @@ export default function StoreBrandsPage({ params }: { params: { id: string } }) 
     <div className="space-y-4">
       <div>
         <h1 className="flex items-center gap-2 text-[22px] font-semibold tracking-tight text-foreground"><Tag className="h-5 w-5 text-accent" /> Brands</h1>
-        <p className="mt-0.5 text-sm text-muted">Brands add, rename, photo upload ya delete karein. Product add karte waqt brand select hoga.</p>
+        <p className="mt-0.5 text-sm text-muted">Add, rename, upload a photo, or delete brands. Choose a brand when you add a product.</p>
       </div>
 
       <section className="rounded-xl border border-line bg-surface p-4">
@@ -167,7 +167,7 @@ export default function StoreBrandsPage({ params }: { params: { id: string } }) 
         {loading ? (
           <div className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-muted"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
         ) : brands.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-muted">Abhi koi brand nahi. Upar se brand + photo add karein (Apple, Samsung, etc.).</p>
+          <p className="px-4 py-10 text-center text-sm text-muted">No brands yet. Add a brand and photo above (for example Apple, Samsung).</p>
         ) : (
           <ul className="divide-y divide-line">
             {brands.map((b) => (
@@ -230,7 +230,7 @@ export default function StoreBrandsPage({ params }: { params: { id: string } }) 
         onClose={() => (delBusy ? undefined : setDel(null))}
         onConfirm={() => void doDelete()}
         title="Delete brand?"
-        description={del ? <span>“{del.name}” delete ho jayega. Is brand ki products rehengi (brand unse hat jayega).</span> : null}
+        description={del ? <span>“{del.name}” will be deleted. Products in this brand will stay, but the brand will be removed from them.</span> : null}
         confirmLabel="Delete"
         tone="danger"
         loading={delBusy}

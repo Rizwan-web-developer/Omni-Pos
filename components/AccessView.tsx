@@ -397,8 +397,7 @@ export function AccessView() {
               {recommendations.length > 0 ? (
                 <p className="flex items-start gap-1.5 text-xs text-muted">
                   <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                  {industryLabel(selected.industryType)} ke liye recommended set: {recommendations.length} features. Aap
-                  apni marzi se koi bhi checkbox on/off kar sakte hain.
+                  {industryLabel(selected.industryType)} recommended set: {recommendations.length} features. You can turn any checkbox on or off.
                 </p>
               ) : null}
 

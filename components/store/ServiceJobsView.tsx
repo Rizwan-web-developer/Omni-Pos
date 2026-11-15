@@ -82,8 +82,8 @@ export function ServiceJobsView({ businessId }: { businessId: string }) {
 
   const createJob = async () => {
     setError(""); setNotice("");
-    if (customerName.trim().length < 2) { setError("Customer name likhein."); return; }
-    if (device.trim().length < 2) { setError("Device / item likhein."); return; }
+    if (customerName.trim().length < 2) { setError("Enter a customer name."); return; }
+    if (device.trim().length < 2) { setError("Enter the device / item."); return; }
     setSaving(true);
     try {
       const res = await fetch(`/api/businesses/${businessId}/service-jobs`, {
@@ -279,7 +279,7 @@ export function ServiceJobsView({ businessId }: { businessId: string }) {
         onClose={() => (delBusy ? undefined : setDel(null))}
         onConfirm={() => void removeJob()}
         title="Delete service job?"
-        description={del ? <span>{del.jobNumber} ({del.device}) delete ho jayega.</span> : null}
+        description={del ? <span>{del.jobNumber} ({del.device}) will be deleted.</span> : null}
         confirmLabel="Delete"
         tone="danger"
         loading={delBusy}

@@ -320,7 +320,7 @@ export function StoreSettings({ businessId }: { businessId: string }) {
         onClose={() => (staffBusy ? undefined : setStaffDel(null))}
         onConfirm={() => void deleteStaff()}
         title="Delete staff account?"
-        description={staffDel ? <span>{staffDel.name} ({staffDel.email}) ka login delete ho jayega.</span> : null}
+        description={staffDel ? <span>The login for {staffDel.name} ({staffDel.email}) will be deleted.</span> : null}
         confirmLabel="Delete"
         tone="danger"
         loading={staffBusy}
