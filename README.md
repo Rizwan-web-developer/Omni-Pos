@@ -1,8 +1,8 @@
-# OmniPos Hub — Multi-Tenant Command Center
+# Omni Pos — Multi-Tenant POS & Stock Platform
 
-A **Next.js 14 App Router** frontend for the OmniPos Hub multi-tenant retail platform, with a default **Orange & White** brand theme plus **Light** and a true **near-black Dark** theme.
+A **Next.js 14 App Router** frontend for the Omni Pos multi-tenant retail platform, with a default **Orange & White** brand theme plus **Light** and a true **near-black Dark** theme.
 
-Design reference: Stitch project `11303360823724371364` — _"OmniPos Hub Enterprise Interface"_.
+Design reference: Stitch project `11303360823724371364` — _"Omni Pos Interface"_.
 
 ## Quick start
 

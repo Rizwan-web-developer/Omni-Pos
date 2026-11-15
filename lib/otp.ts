@@ -10,7 +10,12 @@ function hashCode(email: string, purpose: OtpPurpose, code: string): string {
   return createHash("sha256").update(`${purpose}:${email.toLowerCase()}:${code}`).digest("hex");
 }
 
-export async function issueOtp(email: string, purpose: OtpPurpose, payload?: Record<string, unknown>): Promise<void> {
+export async function issueOtp(
+  email: string,
+  purpose: OtpPurpose,
+  payload?: Record<string, unknown>,
+  baseUrl?: string,
+): Promise<void> {
   const normalized = email.trim().toLowerCase();
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
   const codeHash = hashCode(normalized, purpose, code);
@@ -20,7 +25,7 @@ export async function issueOtp(email: string, purpose: OtpPurpose, payload?: Rec
   await (prisma as any).emailOtp.create({
     data: { email: normalized, purpose, codeHash, expiresAt, payload: payload ?? null },
   });
-  await sendOtpEmail(normalized, code, purpose === "SIGNUP" ? "signup" : "login");
+  await sendOtpEmail(normalized, code, purpose === "SIGNUP" ? "signup" : "login", baseUrl);
 }
 
 export async function consumeOtp(

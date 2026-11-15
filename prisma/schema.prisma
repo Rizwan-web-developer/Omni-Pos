@@ -289,7 +289,7 @@ model Announcement {
 // Global platform branding/settings (singleton row id="default"). Logo shown on all panels.
 model PlatformSetting {
   id                 String   @id @default("default")
-  platformName       String   @default("MNI POS")
+  platformName       String   @default("Omni Pos")
   platformLogoDataUrl String?
   updatedAt          DateTime @updatedAt
 }

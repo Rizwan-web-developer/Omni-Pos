@@ -12,6 +12,11 @@ export const metadata: Metadata = {
   description:
     "Omni Pos is a point-of-sale and stock management SaaS for businesses worldwide. Sell faster, track inventory, print invoices, and manage your team from one secure platform.",
   applicationName: "Omni Pos",
+  icons: {
+    icon: [{ url: "/favicon.png", type: "image/png", sizes: "256x256" }],
+    shortcut: ["/favicon.png"],
+    apple: [{ url: "/favicon.png", type: "image/png", sizes: "256x256" }],
+  },
 };
 
 export const viewport: Viewport = {
@@ -31,7 +36,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <link rel="icon" href="/logo.png" />
       </head>
       <body>
         <a href="#main-content" className="skip-link">

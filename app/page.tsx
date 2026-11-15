@@ -32,7 +32,7 @@ import {
 import { prisma } from "@/lib/db";
 import { getSession, isPlatformAdmin } from "@/lib/auth/server";
 import { BRAND_NAME, CONTACT_EMAIL, CONTACT_WHATSAPP_DISPLAY, CONTACT_WHATSAPP_LINK } from "@/lib/brand";
-import { ThemeSelector } from "@/components/ThemeSelector";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -140,7 +140,7 @@ export default async function LandingPage() {
           <Link href="/" className="flex items-center gap-2.5">
             {platformLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={platformLogo} alt={platformName} className="h-12 w-12 rounded-lg border border-line bg-white object-contain p-0.5" />
+              <img src={platformLogo} alt={platformName} className="h-12 w-12 object-contain" />
             ) : (
               <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent text-accent-fg">
                 <Store className="h-6 w-6" aria-hidden />
@@ -154,7 +154,7 @@ export default async function LandingPage() {
             <a href="#contact" className="hover:text-foreground">Contact</a>
           </nav>
           <div className="flex items-center gap-2">
-            <ThemeSelector />
+            <ThemeToggle />
             <Link href="/login" className="focus-ring rounded-lg border border-line bg-surface px-3.5 py-2 text-sm font-medium hover:border-line-strong">
               Login
             </Link>
@@ -433,7 +433,7 @@ export default async function LandingPage() {
           <div className="flex items-center gap-2.5">
             {platformLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={platformLogo} alt="" className="h-12 w-12 rounded-md border border-line bg-white object-contain p-0.5" />
+              <img src={platformLogo} alt="" className="h-12 w-12 object-contain" />
             ) : (
               <span className="flex h-12 w-12 items-center justify-center rounded-md bg-accent text-accent-fg"><Store className="h-6 w-6" aria-hidden /></span>
             )}

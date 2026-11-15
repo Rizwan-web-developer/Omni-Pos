@@ -13,7 +13,19 @@ const ALLOWED_INDUSTRIES = new Set([
   "mobile", "electronics", "cosmetics-shop", "pharmacy", "paint-shop", "hardware-shop", "grocery",
 ]);
 
+/** Best-effort public origin so the branded logo in the email resolves everywhere. */
+function requestOrigin(req: Request): string {
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+  const forwardedProto = req.headers.get("x-forwarded-proto") || "";
+  if (host) {
+    const proto = forwardedProto || (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+    return `${proto}://${host}`;
+  }
+  return new URL(req.url).origin;
+}
+
 export async function POST(req: Request) {
+  const origin = requestOrigin(req);
   try {
     const body = await req.json().catch(() => ({}));
     const purpose = String(body?.purpose ?? "").toUpperCase();
@@ -50,7 +62,7 @@ export async function POST(req: Request) {
           return NextResponse.json({ message: "This account is locked. Your data is preserved. Contact support to upgrade." }, { status: 403 });
         }
       }
-      await issueOtp(email, "LOGIN");
+      await issueOtp(email, "LOGIN", undefined, origin);
       return NextResponse.json({ ok: true, step: "otp", purpose: "LOGIN", email, message: "Verification code sent to your email." });
     }
 
@@ -76,7 +88,7 @@ export async function POST(req: Request) {
       if (existingUser) return NextResponse.json({ message: "This email already has an account. Please sign in." }, { status: 409 });
 
       const payload = { name, ownerName, phone, location, password, industry, package: packageKey };
-      await issueOtp(email, "SIGNUP", payload);
+      await issueOtp(email, "SIGNUP", payload, origin);
       return NextResponse.json({ ok: true, step: "otp", purpose: "SIGNUP", email, message: "Verification code sent to your email." });
     }
 

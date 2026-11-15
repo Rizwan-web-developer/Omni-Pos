@@ -37,8 +37,8 @@ export function formatMoney(value: number): string {
   return formatUsdBase(value);
 }
 
-/** @deprecated kept for backward compatibility; returns the same value (USD). */
-export function toPKR(usdValue: number): number {
+/** @deprecated retained for backward compatibility; USD values pass through. */
+export function toUsd(usdValue: number): number {
   return Math.round(usdValue);
 }
 

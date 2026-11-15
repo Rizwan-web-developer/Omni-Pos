@@ -21,14 +21,15 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function otpEmailHtml(code: string, purpose: "login" | "signup"): string {
+export function otpEmailHtml(code: string, purpose: "login" | "signup", baseUrl?: string): string {
   const title = purpose === "signup" ? "Verify your email" : "Your login code";
   const intro =
     purpose === "signup"
       ? `Welcome to ${BRAND_NAME}. Use the code below to verify your email and activate your 7-day free trial.`
       : `Use the code below to securely sign in to ${BRAND_NAME}.`;
   const safeCode = escapeHtml(code);
-  const logoUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/logo.png`;
+  const origin = (baseUrl || process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const logoUrl = `${origin}/logo.png`;
   return `<!doctype html>
 <html lang="en">
   <body style="margin:0;padding:0;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
@@ -38,7 +39,7 @@ export function otpEmailHtml(code: string, purpose: "login" | "signup"): string 
           <tr>
             <td style="padding:20px 24px;background:linear-gradient(135deg,#fff7ed,#ffffff);border-bottom:1px solid #fed7aa;">
               <div style="display:flex;align-items:center;gap:10px;">
-                <img src="${logoUrl}" alt="${escapeHtml(BRAND_NAME)}" style="width:36px;height:36px;object-fit:contain;border-radius:8px;" />
+                <img src="${logoUrl}" alt="${escapeHtml(BRAND_NAME)}" style="width:40px;height:40px;object-fit:contain;vertical-align:middle;" />
                 <div style="font-size:20px;font-weight:700;color:#ea580c;letter-spacing:0.2px;">${escapeHtml(BRAND_NAME)}</div>
               </div>
               <div style="margin-top:4px;font-size:13px;color:#475569;">POS &amp; stock management for every business</div>
@@ -68,7 +69,7 @@ export function otpEmailHtml(code: string, purpose: "login" | "signup"): string 
 </html>`;
 }
 
-export async function sendOtpEmail(to: string, code: string, purpose: "login" | "signup"): Promise<void> {
+export async function sendOtpEmail(to: string, code: string, purpose: "login" | "signup", baseUrl?: string): Promise<void> {
   const subject =
     purpose === "signup"
       ? `${BRAND_NAME} — Verify your email`
@@ -78,6 +79,6 @@ export async function sendOtpEmail(to: string, code: string, purpose: "login" | 
     to,
     subject,
     text: `${BRAND_NAME}\n\nYour ${purpose === "signup" ? "verification" : "login"} code is: ${code}\nThis code expires in 10 minutes.\n\nIf you didn't request this, you can ignore this email.\nSupport: ${CONTACT_EMAIL}`,
-    html: otpEmailHtml(code, purpose),
+    html: otpEmailHtml(code, purpose, baseUrl),
   });
 }

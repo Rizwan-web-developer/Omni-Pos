@@ -140,7 +140,7 @@ export function SettingsView() {
             <p className="mb-1.5 block text-sm font-medium text-foreground">Logo</p>
             <div className="flex items-center gap-3">
               {settings.platformLogoDataUrl ? (
-                <img src={settings.platformLogoDataUrl} alt="" className="h-14 w-14 rounded-lg border border-line bg-surface-2 object-contain" />
+                <img src={settings.platformLogoDataUrl} alt="" className="h-14 w-14 object-contain" />
               ) : (
                 <span className="flex h-14 w-14 items-center justify-center rounded-lg border border-dashed border-line bg-surface-2 text-xs font-medium text-muted">Logo</span>
               )}
